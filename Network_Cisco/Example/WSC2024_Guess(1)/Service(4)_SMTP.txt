@@ -1,0 +1,14 @@
+############################################################################################
+01. Set contact to admin@lyon2024.fr 
+02. Set location to Lyon, France
+03. Created an SNMPv3 group named WSC with authPriv security level, using the authentication protocol (SHA) with password Skill39!, and the encryption protocol (AES 128) with password Skill39!
+04. Cacti monitoring server on  HQ1-SVR1(IPv4). You can use it to check whether SNMP is working correctly or not via http://monitor.lyon2024.fr/cacti (username: admin, password: Skill39!)
+############################################################################################
+
+====[All HQ1 network devices]===============================================================
+snmp-ser contact admin@lyon2024.fr
+snmp-ser lo Lyon,France
+snmp-ser view VIEW iso in
+snmp-ser group WSC v3 priv re VIEW
+snmp-ser user snmpuser WSC remote 10.255.200.100 v3 auth sha Skill39! priv aes 128 Skill39!
+====[All HQ1 network devices]===============================================================

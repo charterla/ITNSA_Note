@@ -1,0 +1,60 @@
+############################################################################################ 
+01. Advertise the internal network at HQ and BR sites according to the routing diagram, using classful subnetting when advertising routes.
+02. Do not send route update messages to endpoint devices on DS1, DS2, DS3 and DS4.
+03. Redistribute the BGP default route into EIGRP-IPv4 on IR1 and IR2.
+04. Do not advertise the default route to BR1 and BR2.
+05. Configure route summarization on the Tunnel interface of IR1 and IR2, summarizing the internal routes of HQ1, HQ2, BR1, and BR2 into a class B route.
+06. Configure route summarization on the GigabitEthernet0/5 interface of CR1, CR2, CR3 and CR4, summarizing internal routes between each other into a class B route.
+07. Do not advertise non-internal routes between CR1, CR2, CR3 and CR4.
+############################################################################################
+
+====[DS1-4]=================================================================================
+router eigrp 2024
+no auto-summary
+net 0.0.0.0 255.255.255.255
+pass de
+no pass g0/0
+no pass g0/1
+exit
+====[DS1-4]=================================================================================
+
+====[CR1-4]=================================================================================
+ip prefix-list HQ1_PL seq 10 permit [CR1-2: 10.255.0.0/16; CR3-4: 10.254.0.0/16]
+ip prefix-list HQ1_PL seq 20 permit 172.16.0.0/16
+ip prefix-list HQ1_PL seq 30 permit 192.168.0.0/16
+route-map HQ1_RM
+mat ip add pre HQ1_PL
+router eigrp 2024
+no auto-summary
+net 0.0.0.0 255.255.255.255
+distri route HQ1_RM out g0/1
+distri route HQ1_RM out g0/5
+int g0/5
+ip summary-add eigrp 2024 [CR1-2: 10.255.0.0; CR3-4: 10.254.0.0] 255.255.0.0
+ip summary-add eigrp 2024 172.16.0.0 255.255.0.0
+ip summary-add eigrp 2024 192.168.0.0 255.255.0.0
+exit
+====[CR1-4]=================================================================================
+
+====[IR1-2]=================================================================================
+ip prefix-list DEFAULT_PL per 0.0.0.0/0
+route-map DEFAULT_RM
+mat ip add pre DEFAULT_PL
+ip prefix-list NONDEFAULT_PL seq 5 deny 0.0.0.0/0
+ip prefix-list NONDEFAULT_PL seq 10 permit 0.0.0.0/0 le 32
+route-map NONDEFAULT_RM
+mat ip add pre NONDEFAULT_PL
+router eigrp 2024
+no auto-summary
+net 0.0.0.0 255.255.255.255
+redis bgp 24001 met 1000000 1 255 1 1500 route DEFAULT_RM
+distri route NONDEFAULT_RM out tun 0
+exit
+====[IR1-2]=================================================================================
+
+====[BR1-2]=================================================================================
+router eigrp 2024
+no auto-summary
+net 0.0.0.0 255.255.255.255
+exit
+====[BR1-2]=================================================================================

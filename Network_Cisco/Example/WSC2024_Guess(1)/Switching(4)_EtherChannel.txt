@@ -1,0 +1,32 @@
+############################################################################################
+01. Use following port-channel numbers to configure EtherChannel between switches:
+    1 – between switches DS1 and DS2
+    2 – between switches DS3 and DS4
+02. The aggregated channel between DS1 and DS2 use a Cisco proprietary protocol for dynamic negotiation.
+03. DS1 should initiate negotiation and the DS2 should respond but don’t initiate.
+04. The aggregated channel between DS3 and DS4 do not use dynamic negotiation protocol.
+05. Configure the load balancing and forwarding method with source and destination MAC address.
+############################################################################################
+
+====[DS1-2]=================================================================================
+int range g0/2-3
+channel-pro pagp
+channel-group 1 mode [DS1: desir; DS2: auto]
+int po1
+sw trunk encap dot1q
+sw mode trunk
+sw none
+exit
+port-cha load src-dst-mac
+====[DS1-2]=================================================================================
+
+====[DS3-4]=================================================================================
+int range g0/2-3
+channel-group 2 mode on
+int po1
+sw trunk encap dot1q
+sw mode trunk
+sw none
+exit
+port-cha load src-dst-mac
+====[DS3-4]=================================================================================

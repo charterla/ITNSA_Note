@@ -1,0 +1,56 @@
+############################################################################################
+01. Configure dynamic port translation on IR1, IR2, BR1, and BR2 for the LAN subnet, All internal IPv4 addresses are translated into public IPv4 address of interface connected to the ISP1.
+02. Configure NAT64 on IR2 to make HQ1-SVR1(IPv6) can communicate to HQ2 Site. Use 2025:6400::/96 as the prefix.
+03. Configure NAT46 on IR2 to make HQ1-SVR1(IPv6)  reachable from HQ2 Site IPv4 network via 10.64.255.100.
+############################################################################################
+
+====[IR1]===================================================================================
+int range g0/2-3
+ip nat in
+int g0/1
+ip nat out
+ip access ext NAT_ACL
+deny ip any 172.16.0.0 0.0.255.255
+deny ip any 192.168.0.0 0.0.255.255
+deny ip any 10.253.0.0 0.0.255.255
+permit ip 10.255.0.0 0.0.255.255 any
+permit ip 172.16.0.0 0.0.255.255 any
+permit ip 192.168.0.0 0.0.255.255 any
+exit
+ip nat in source list NAT_ACL int g0/1 over
+====[IR1]===================================================================================
+
+====[IR2]===================================================================================
+int range g0/2-3
+ip nat in
+int g0/1
+ip nat out
+ip access ext NAT_ACL
+deny ip any 172.16.0.0 0.0.255.255
+deny ip any 192.168.0.0 0.0.255.255
+deny ip any 10.253.0.0 0.0.255.255
+permit ip 10.254.0.0 0.0.255.255 any
+permit ip 172.16.0.0 0.0.255.255 any
+permit ip 192.168.0.0 0.0.255.255 any
+exit
+ip nat in source list NAT_ACL int g0/1 over
+nat64 pre stateful 2025:6400::/96
+nat64 v6v4 static 2001:624C:3201:200::100 10.64.255.100
+====[IR2]===================================================================================
+
+====[BR1-2]=================================================================================
+int g0/2
+ip nat in
+int g0/1
+ip nat out
+ip access ext NAT_ACL
+deny ip any 10.255.0.0 0.0.255.255
+deny ip any 10.254.0.0 0.0.255.255
+deny ip any 172.16.0.0 0.0.255.255
+deny ip any 192.168.0.0 0.0.255.255
+deny ip any 10.253.0.0 0.0.255.255
+[BR1: permit ip 192.168.0.0 0.0.255.255 any]
+[BR2: permit ip 172.16.0.0 0.0.255.255 any]
+exit
+ip nat in source list NAT_ACL int g0/1 over
+====[BR1-2]=================================================================================

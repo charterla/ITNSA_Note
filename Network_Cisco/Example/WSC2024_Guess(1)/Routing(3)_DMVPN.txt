@@ -1,0 +1,110 @@
+############################################################################################
+01. Configure tunnels between IR1, IR2, BR1 and BR2.   
+    (a) Use Loopback0 interface as tunnel source interface on each router.
+    (b) HQ and BRANCH sites should be able to communicate each other through this tunnel.
+    (c) Require the use of encryption techniques to ensure security for the tunnels.
+############################################################################################
+
+====[IR1-2]=================================================================================
+int tun 0
+ip add [IR1: 10.253.0.1; IR2: 10.253.0.2] 255.255.255.0
+ipv6 add [IR1: 2001:624C:3201:300::1/64; IR2: 2001:624C:3201:300::2/64]
+tun sou lo0
+tun mode gre multi
+ip nhrp net 1
+ip nhrp map multi dynamic
+[IR1: ip nhrp nhs 10.253.0.2 nbma 1.1.1.2 multi]
+[IR2: ip nhrp nhs 10.253.0.1 nbma 1.1.1.1 multi]
+ip nhrp redir
+no ip split-hor eigrp 2024
+[IR1: ip summary-add eigrp 2024 10.255.0.0 255.255.0.0]
+[IR2: ip summary-add eigrp 2024 10.254.0.0 255.255.0.0]
+ip summary-add eigrp 2024 172.16.0.0 255.255.0.0
+ip summary-add eigrp 2024 192.168.0.0 255.255.0.0
+ip next-hop-self eigrp 2024
+ipv6 nhrp net 1
+ipv6 nhrp map multi dynamic
+[IR1: ipv6 nhrp nhs 2001:624C:3201:300::2 nbma 1.1.1.2 multi]
+[IR2: ipv6 nhrp nhs 2001:624C:3201:300::1 nbma 1.1.1.1 multi]
+ipv6 nhrp redir
+exit
+
+crypto ikev2 proposal IKEv2_PROP
+en aes-gcm-256
+prf sha1
+group 5
+crypto ikev2 policy IKEv2_POLI
+pro IKEv2_PROP
+crypto ikev2 key IKEv2_KEY
+peer DMVPN_NODE
+add 0.0.0.0 0.0.0.0
+pre Skill39!
+peer DMVPN_NODEv6
+add ::0/0
+pre Skill39!
+exit
+crypto ikev2 profile IKEv2_PROF
+key local IKEv2_KEY
+authen local pre
+authen remote pre
+match id remote any
+exit
+
+crypto ipsec trans IPSEC_TS esp-aes esp-sha-hmac
+mode tun
+crypto ipsec profile IPSEC_PROF
+set trans IPSEC_TS
+set ikev2 IKEv2_PROF
+int tun 0
+tun pro ipsec prof IPSEC_PROF
+exit
+====[IR1-2]=================================================================================
+
+====[BR1-2]=================================================================================
+int tun 0
+[BR1: ip add 10.253.0.3 255.255.255.0]
+[BR2: ip add 10.253.0.4 255.255.255.0]
+[BR1: ipv6 add 2001:624C:3201:300::3/64]
+[BR2: ipv6 add 2001:624C:3201:300::4/64]
+tun sou lo0
+tun mode gre multi
+ip nhrp net 1
+ip nhrp nhs 10.253.0.1 nbma 1.1.1.1 multi pri 50
+ip nhrp nhs 10.253.0.2 nbma 1.1.1.2 multi pri 100
+ip nhrp short
+ipv6 nhrp net 1
+ipv6 nhrp nhs 2001:624C:3201:300::1 nbma 1.1.1.1 multi pri 50
+ipv6 nhrp nhs 2001:624C:3201:300::2 nbma 1.1.1.2 multi pri 100
+ipv6 nhrp short
+exit
+
+crypto ikev2 proposal IKEv2_PROP
+en aes-gcm-256
+prf sha1
+group 5
+crypto ikev2 policy IKEv2_POLI
+pro IKEv2_PROP
+crypto ikev2 key IKEv2_KEY
+peer DMVPN_NODE
+add 0.0.0.0 0.0.0.0
+pre Skill39!
+peer DMVPN_NODEv6
+add ::0/0
+pre Skill39!
+exit
+crypto ikev2 profile IKEv2_PROF
+key local IKEv2_KEY
+authen local pre
+authen remote pre
+match id remote any
+exit
+
+crypto ipsec trans IPSEC_TS esp-aes esp-sha-hmac
+mode tun
+crypto ipsec profile IPSEC_PROF
+set trans IPSEC_TS
+set ikev2 IKEv2_PROF
+int tun 0
+tun pro ipsec prof IPSEC_PROF
+exit
+====[BR1-2]=================================================================================

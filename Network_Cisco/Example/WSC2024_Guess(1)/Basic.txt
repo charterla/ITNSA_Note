@@ -1,0 +1,21 @@
+############################################################################################
+01. Configure device hostname according to the topology. 
+02. Configure domain name to “lyon2024.fr” on all devices. 
+03. Configure the privileged mode password “Skill39!” on all devices. The password must be hashed using the sha-256 algorithm.
+04. Configure device timezone to CET +1 on all devices. 
+############################################################################################
+
+====[All network devices]===================================================================
+en
+conf t
+no ip domain-lo
+line con 0
+logg syn
+exec-timeout 0 0
+exit
+
+host [hostname]
+ip domain-name wsc2022.net
+clock time CET +1
+ena al sha256 sec Skill39
+====[All network devices]===================================================================

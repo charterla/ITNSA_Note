@@ -1,0 +1,4 @@
+############################################################################################
+01. Make sure all virtual machines in the inside network can communicate with the others.
+02. HQ1 and HQ2 should advertise only summarized route 192.168.0.0/16 to BR1 and BR2
+############################################################################################

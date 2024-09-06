@@ -1,0 +1,39 @@
+############################################################################################
+01. DSW1 should be root bridge of VLAN10. If DSW1 goes down DSW2 should take over as the root bridge.
+02. DSW2 should be root bridge of VLAN20. If DSW2 goes down DSW1 should take over as the root bridge.
+03. The traffic from HQ-CLI should pass through DSW1.
+04. Configure port which is connected to end device so that it immediately begins forwarding when
+connected.
+############################################################################################
+
+====[DSW1-2]================================================================================
+span mst config
+name HQ
+revision 10
+ins 10 vlan 10
+ins 20 vlan 20
+exit
+span mode mst
+span mst 10 root [DSW1: pri; DSW2: sec]
+span mst 20 root [DSW1: sec; DSW2: pri]
+====[DSW1-2]================================================================================
+
+====[ASW1-2]================================================================================
+int g0/0
+sw mode access
+sw access vlan [ASW1: 10; ASW2: 20]
+exit
+
+span mst config
+name HQ
+revision 10
+ins 10 vlan 10
+ins 20 vlan 20
+exit
+span mode mst
+int g0/0
+span bpduguard en
+span bpdufilter en
+span portfast
+exit
+====[ASW1-2]================================================================================

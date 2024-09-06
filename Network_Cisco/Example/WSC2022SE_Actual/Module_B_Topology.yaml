@@ -1,0 +1,755 @@
+lab:
+  description: ''
+  notes: ''
+  title: Module B Topology
+  version: 0.2.0
+links:
+  - id: l0
+    n1: n8
+    n2: n0
+    i1: i1
+    i2: i0
+    label: ISP-GigabitEthernet0/0<->REMOTE-eth0
+  - id: l1
+    n1: n8
+    n2: n9
+    i1: i2
+    i2: i1
+    label: ISP-GigabitEthernet0/1<->HQ1-GigabitEthernet0/0
+  - id: l2
+    n1: n8
+    n2: n10
+    i1: i3
+    i2: i1
+    label: ISP-GigabitEthernet0/2<->HQ2-GigabitEthernet0/0
+  - id: l3
+    n1: n8
+    n2: n11
+    i1: i4
+    i2: i1
+    label: ISP-GigabitEthernet0/3<->BR1-GigabitEthernet0/0
+  - id: l4
+    n1: n8
+    n2: n12
+    i1: i5
+    i2: i1
+    label: ISP-GigabitEthernet0/4<->BR2-GigabitEthernet0/0
+  - id: l5
+    n1: n11
+    n2: n1
+    i1: i2
+    i2: i0
+    label: BR1-GigabitEthernet0/1<->BR-CLI1-eth0
+  - id: l6
+    n1: n12
+    n2: n2
+    i1: i2
+    i2: i0
+    label: BR2-GigabitEthernet0/1<->BR-CLI2-eth0
+  - id: l7
+    n1: n9
+    n2: n3
+    i1: i2
+    i2: i1
+    label: HQ1-GigabitEthernet0/1<->DSW1-GigabitEthernet0/0
+  - id: l8
+    n1: n10
+    n2: n4
+    i1: i2
+    i2: i1
+    label: HQ2-GigabitEthernet0/1<->DSW2-GigabitEthernet0/0
+  - id: l9
+    n1: n9
+    n2: n4
+    i1: i3
+    i2: i2
+    label: HQ1-GigabitEthernet0/2<->DSW2-GigabitEthernet0/1
+  - id: l10
+    n1: n10
+    n2: n3
+    i1: i3
+    i2: i2
+    label: HQ2-GigabitEthernet0/2<->DSW1-GigabitEthernet0/1
+  - id: l11
+    n1: n3
+    n2: n4
+    i1: i3
+    i2: i3
+    label: DSW1-GigabitEthernet0/2<->DSW2-GigabitEthernet0/2
+  - id: l12
+    n1: n3
+    n2: n4
+    i1: i4
+    i2: i4
+    label: DSW1-GigabitEthernet0/3<->DSW2-GigabitEthernet0/3
+  - id: l13
+    n1: n6
+    n2: n7
+    i1: i1
+    i2: i0
+    label: ASW2-GigabitEthernet0/0<->HQ-CLI-eth0
+  - id: l14
+    n1: n3
+    n2: n6
+    i1: i5
+    i2: i2
+    label: DSW1-GigabitEthernet1/0<->ASW2-GigabitEthernet0/1
+  - id: l15
+    n1: n4
+    n2: n5
+    i1: i5
+    i2: i2
+    label: DSW2-GigabitEthernet1/0<->ASW1-GigabitEthernet0/1
+  - id: l16
+    n1: n3
+    n2: n5
+    i1: i6
+    i2: i3
+    label: DSW1-GigabitEthernet1/1<->ASW1-GigabitEthernet0/2
+  - id: l17
+    n1: n3
+    n2: n5
+    i1: i7
+    i2: i4
+    label: DSW1-GigabitEthernet1/2<->ASW1-GigabitEthernet0/3
+  - id: l18
+    n1: n4
+    n2: n6
+    i1: i6
+    i2: i3
+    label: DSW2-GigabitEthernet1/1<->ASW2-GigabitEthernet0/2
+  - id: l19
+    n1: n4
+    n2: n6
+    i1: i7
+    i2: i4
+    label: DSW2-GigabitEthernet1/2<->ASW2-GigabitEthernet0/3
+  - id: l20
+    n1: n15
+    n2: n5
+    i1: i0
+    i2: i1
+    label: HQ-SRV-ens2<->ASW1-GigabitEthernet0/0
+  - id: l21
+    n1: n8
+    n2: n14
+    i1: i7
+    i2: i0
+    label: ISP-GigabitEthernet0/6<->ext-conn-0-port
+  - id: l22
+    n1: n16
+    n2: n8
+    i1: i1
+    i2: i6
+    label: FW1-GigabitEthernet0/0<->ISP-GigabitEthernet0/5
+  - id: l23
+    n1: n16
+    n2: n13
+    i1: i2
+    i2: i0
+    label: FW1-GigabitEthernet0/1<->DC-SRV-ens2
+nodes:
+  - boot_disk_size: null
+    configuration: |-
+      # this is a shell script which will be sourced at boot
+      hostname inserthostname-here
+      # configurable user account
+      USERNAME=cisco
+      PASSWORD=cisco
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n0
+    image_definition: null
+    label: REMOTE
+    node_definition: desktop
+    ram: null
+    tags: []
+    x: 320
+    y: -80
+    interfaces:
+      - id: i0
+        label: eth0
+        slot: 0
+        type: physical
+  - boot_disk_size: null
+    configuration: |-
+      # this is a shell script which will be sourced at boot
+      hostname inserthostname-here
+      # configurable user account
+      USERNAME=cisco
+      PASSWORD=cisco
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n1
+    image_definition: null
+    label: BR-CLI1
+    node_definition: desktop
+    ram: null
+    tags: []
+    x: 320
+    y: -200
+    interfaces:
+      - id: i0
+        label: eth0
+        slot: 0
+        type: physical
+  - boot_disk_size: null
+    configuration: |-
+      # this is a shell script which will be sourced at boot
+      hostname inserthostname-here
+      # configurable user account
+      USERNAME=cisco
+      PASSWORD=cisco
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n2
+    image_definition: null
+    label: BR-CLI2
+    node_definition: desktop
+    ram: null
+    tags: []
+    x: 320
+    y: 200
+    interfaces:
+      - id: i0
+        label: eth0
+        slot: 0
+        type: physical
+  - boot_disk_size: null
+    configuration: hostname inserthostname-here
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n3
+    image_definition: null
+    label: DSW1
+    node_definition: iosvl2
+    ram: null
+    tags: []
+    x: 840
+    y: -80
+    interfaces:
+      - id: i0
+        label: Loopback0
+        type: loopback
+      - id: i1
+        label: GigabitEthernet0/0
+        slot: 0
+        type: physical
+      - id: i2
+        label: GigabitEthernet0/1
+        slot: 1
+        type: physical
+      - id: i3
+        label: GigabitEthernet0/2
+        slot: 2
+        type: physical
+      - id: i4
+        label: GigabitEthernet0/3
+        slot: 3
+        type: physical
+      - id: i5
+        label: GigabitEthernet1/0
+        slot: 4
+        type: physical
+      - id: i6
+        label: GigabitEthernet1/1
+        slot: 5
+        type: physical
+      - id: i7
+        label: GigabitEthernet1/2
+        slot: 6
+        type: physical
+      - id: i8
+        label: GigabitEthernet1/3
+        slot: 7
+        type: physical
+  - boot_disk_size: null
+    configuration: hostname inserthostname-here
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n4
+    image_definition: null
+    label: DSW2
+    node_definition: iosvl2
+    ram: null
+    tags: []
+    x: 840
+    y: 80
+    interfaces:
+      - id: i0
+        label: Loopback0
+        type: loopback
+      - id: i1
+        label: GigabitEthernet0/0
+        slot: 0
+        type: physical
+      - id: i2
+        label: GigabitEthernet0/1
+        slot: 1
+        type: physical
+      - id: i3
+        label: GigabitEthernet0/2
+        slot: 2
+        type: physical
+      - id: i4
+        label: GigabitEthernet0/3
+        slot: 3
+        type: physical
+      - id: i5
+        label: GigabitEthernet1/0
+        slot: 4
+        type: physical
+      - id: i6
+        label: GigabitEthernet1/1
+        slot: 5
+        type: physical
+      - id: i7
+        label: GigabitEthernet1/2
+        slot: 6
+        type: physical
+      - id: i8
+        label: GigabitEthernet1/3
+        slot: 7
+        type: physical
+  - boot_disk_size: null
+    configuration: hostname inserthostname-here
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n5
+    image_definition: null
+    label: ASW1
+    node_definition: iosvl2
+    ram: null
+    tags: []
+    x: 1080
+    y: -120
+    interfaces:
+      - id: i0
+        label: Loopback0
+        type: loopback
+      - id: i1
+        label: GigabitEthernet0/0
+        slot: 0
+        type: physical
+      - id: i2
+        label: GigabitEthernet0/1
+        slot: 1
+        type: physical
+      - id: i3
+        label: GigabitEthernet0/2
+        slot: 2
+        type: physical
+      - id: i4
+        label: GigabitEthernet0/3
+        slot: 3
+        type: physical
+      - id: i5
+        label: GigabitEthernet1/0
+        slot: 4
+        type: physical
+      - id: i6
+        label: GigabitEthernet1/1
+        slot: 5
+        type: physical
+      - id: i7
+        label: GigabitEthernet1/2
+        slot: 6
+        type: physical
+      - id: i8
+        label: GigabitEthernet1/3
+        slot: 7
+        type: physical
+  - boot_disk_size: null
+    configuration: hostname inserthostname-here
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n6
+    image_definition: null
+    label: ASW2
+    node_definition: iosvl2
+    ram: null
+    tags: []
+    x: 1080
+    y: 120
+    interfaces:
+      - id: i0
+        label: Loopback0
+        type: loopback
+      - id: i1
+        label: GigabitEthernet0/0
+        slot: 0
+        type: physical
+      - id: i2
+        label: GigabitEthernet0/1
+        slot: 1
+        type: physical
+      - id: i3
+        label: GigabitEthernet0/2
+        slot: 2
+        type: physical
+      - id: i4
+        label: GigabitEthernet0/3
+        slot: 3
+        type: physical
+      - id: i5
+        label: GigabitEthernet1/0
+        slot: 4
+        type: physical
+      - id: i6
+        label: GigabitEthernet1/1
+        slot: 5
+        type: physical
+      - id: i7
+        label: GigabitEthernet1/2
+        slot: 6
+        type: physical
+      - id: i8
+        label: GigabitEthernet1/3
+        slot: 7
+        type: physical
+  - boot_disk_size: null
+    configuration: |-
+      # this is a shell script which will be sourced at boot
+      hostname inserthostname-here
+      # configurable user account
+      USERNAME=cisco
+      PASSWORD=cisco
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n7
+    image_definition: null
+    label: HQ-CLI
+    node_definition: desktop
+    ram: null
+    tags: []
+    x: 1240
+    y: 40
+    interfaces:
+      - id: i0
+        label: eth0
+        slot: 0
+        type: physical
+  - boot_disk_size: null
+    configuration: hostname inserthostname-here
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n8
+    image_definition: null
+    label: ISP
+    node_definition: iosv
+    ram: null
+    tags: []
+    x: 480
+    y: 0
+    interfaces:
+      - id: i0
+        label: Loopback0
+        type: loopback
+      - id: i1
+        label: GigabitEthernet0/0
+        slot: 0
+        type: physical
+      - id: i2
+        label: GigabitEthernet0/1
+        slot: 1
+        type: physical
+      - id: i3
+        label: GigabitEthernet0/2
+        slot: 2
+        type: physical
+      - id: i4
+        label: GigabitEthernet0/3
+        slot: 3
+        type: physical
+      - id: i5
+        label: GigabitEthernet0/4
+        slot: 4
+        type: physical
+      - id: i6
+        label: GigabitEthernet0/5
+        slot: 5
+        type: physical
+      - id: i7
+        label: GigabitEthernet0/6
+        slot: 6
+        type: physical
+      - id: i8
+        label: GigabitEthernet0/7
+        slot: 7
+        type: physical
+  - boot_disk_size: null
+    configuration: hostname inserthostname-here
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n9
+    image_definition: null
+    label: HQ1
+    node_definition: iosv
+    ram: null
+    tags: []
+    x: 640
+    y: -80
+    interfaces:
+      - id: i0
+        label: Loopback0
+        type: loopback
+      - id: i1
+        label: GigabitEthernet0/0
+        slot: 0
+        type: physical
+      - id: i2
+        label: GigabitEthernet0/1
+        slot: 1
+        type: physical
+      - id: i3
+        label: GigabitEthernet0/2
+        slot: 2
+        type: physical
+      - id: i4
+        label: GigabitEthernet0/3
+        slot: 3
+        type: physical
+  - boot_disk_size: null
+    configuration: hostname inserthostname-here
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n10
+    image_definition: null
+    label: HQ2
+    node_definition: iosv
+    ram: null
+    tags: []
+    x: 640
+    y: 80
+    interfaces:
+      - id: i0
+        label: Loopback0
+        type: loopback
+      - id: i1
+        label: GigabitEthernet0/0
+        slot: 0
+        type: physical
+      - id: i2
+        label: GigabitEthernet0/1
+        slot: 1
+        type: physical
+      - id: i3
+        label: GigabitEthernet0/2
+        slot: 2
+        type: physical
+      - id: i4
+        label: GigabitEthernet0/3
+        slot: 3
+        type: physical
+  - boot_disk_size: null
+    configuration: hostname inserthostname-here
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n11
+    image_definition: null
+    label: BR1
+    node_definition: iosv
+    ram: null
+    tags: []
+    x: 480
+    y: -160
+    interfaces:
+      - id: i0
+        label: Loopback0
+        type: loopback
+      - id: i1
+        label: GigabitEthernet0/0
+        slot: 0
+        type: physical
+      - id: i2
+        label: GigabitEthernet0/1
+        slot: 1
+        type: physical
+      - id: i3
+        label: GigabitEthernet0/2
+        slot: 2
+        type: physical
+      - id: i4
+        label: GigabitEthernet0/3
+        slot: 3
+        type: physical
+  - boot_disk_size: null
+    configuration: hostname inserthostname-here
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n12
+    image_definition: null
+    label: BR2
+    node_definition: iosv
+    ram: null
+    tags: []
+    x: 480
+    y: 160
+    interfaces:
+      - id: i0
+        label: Loopback0
+        type: loopback
+      - id: i1
+        label: GigabitEthernet0/0
+        slot: 0
+        type: physical
+      - id: i2
+        label: GigabitEthernet0/1
+        slot: 1
+        type: physical
+      - id: i3
+        label: GigabitEthernet0/2
+        slot: 2
+        type: physical
+      - id: i4
+        label: GigabitEthernet0/3
+        slot: 3
+        type: physical
+  - boot_disk_size: null
+    configuration: |-
+      #cloud-config
+      hostname: inserthostname-here
+      manage_etc_hosts: True
+      system_info:
+        default_user:
+          name: cisco
+      password: cisco
+      chpasswd: { expire: False }
+      ssh_pwauth: True
+      ssh_authorized_keys:
+         - your-ssh-pubkey-line-goes-here
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n13
+    image_definition: null
+    label: DC-SRV
+    node_definition: ubuntu
+    ram: null
+    tags: []
+    x: 160
+    y: 80
+    interfaces:
+      - id: i0
+        label: ens2
+        slot: 0
+        type: physical
+      - id: i1
+        label: ens3
+        slot: 1
+        type: physical
+  - boot_disk_size: null
+    configuration: virbr0
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n14
+    image_definition: null
+    label: ext-conn-0
+    node_definition: external_connector
+    ram: null
+    tags: []
+    x: 320
+    y: 0
+    interfaces:
+      - id: i0
+        label: port
+        slot: 0
+        type: physical
+  - boot_disk_size: null
+    configuration: |-
+      #cloud-config
+      hostname: inserthostname-here
+      manage_etc_hosts: True
+      system_info:
+        default_user:
+          name: cisco
+      password: cisco
+      chpasswd: { expire: False }
+      ssh_pwauth: True
+      ssh_authorized_keys:
+         - your-ssh-pubkey-line-goes-here
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n15
+    image_definition: null
+    label: HQ-SRV
+    node_definition: ubuntu
+    ram: null
+    tags: []
+    x: 1240
+    y: -40
+    interfaces:
+      - id: i0
+        label: ens2
+        slot: 0
+        type: physical
+      - id: i1
+        label: ens3
+        slot: 1
+        type: physical
+  - boot_disk_size: null
+    configuration: hostname inserthostname-here
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n16
+    image_definition: null
+    label: FW1
+    node_definition: iosv
+    ram: null
+    tags: []
+    x: 320
+    y: 80
+    interfaces:
+      - id: i0
+        label: Loopback0
+        type: loopback
+      - id: i1
+        label: GigabitEthernet0/0
+        slot: 0
+        type: physical
+      - id: i2
+        label: GigabitEthernet0/1
+        slot: 1
+        type: physical
+      - id: i3
+        label: GigabitEthernet0/2
+        slot: 2
+        type: physical
+      - id: i4
+        label: GigabitEthernet0/3
+        slot: 3
+        type: physical
+annotations: []

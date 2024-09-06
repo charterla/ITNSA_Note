@@ -1,0 +1,39 @@
+############################################################################################
+01. Configure VTP on HQ sites switches. Configure DS1 and DS3 as the VTP Server. Other switches must be configured as VTP client. Configure VLAN on the VTP server: 
+    a. VLAN 10 (CLIENT)
+    b. VLAN 20 (SERVER), Only the switch at HQ1 site needs to be created.
+    c. VLAN 99 (NATIVE)
+02. Configure VLAN 10 (CLIENT) on AS3 and AS4.
+############################################################################################
+
+====[DS1, DS3]==============================================================================
+vlan 10
+name CLIENT
+[DS1: vlan 20]
+[DS1: name SERVER]
+vlan 99
+name NATIVE
+exit
+vtp domain lyon2024.fr
+vtp version 3
+vtp mode server
+vtp pass Skill39! hidden
+exit
+vtp primary vlan
+conf t
+====[DS1, DS3]==============================================================================
+
+====[DS2, DS4, AS1-2]=======================================================================
+vtp domain lyon2024.fr
+vtp version 3
+vtp mode client
+vtp pass Skill39! hidden
+====[DS2, DS4, AS1-2]=======================================================================
+
+====[AS3-4]=================================================================================
+vlan 10
+name CLIENT
+vlan 99
+name NATIVE
+exit
+====[AS3-4]=================================================================================

@@ -1,0 +1,32 @@
+############################################################################################
+01. Configure VTP on all switches to synchronize VLANs. It should be possible to modify VLAN database only from DSW1, and VLAN databases of all the other switches should be synchronized from DSW1. VLAN
+database on all switches should contain following VLANs:
+    (a) VLAN 10 with name SRV
+    (b) VLAN 20 with name CLI
+############################################################################################
+
+====[DSW1]==================================================================================
+vlan 10
+name SRV
+vlan 20
+name CLI
+vlan 99
+name Native
+vtp domain wsc2022.net
+vtp version 3
+vtp pass Skill39 hidden
+vtp mode ser
+exit
+vtp primary vlan
+>Skill39
+conf t
+====[DSW1]==================================================================================
+
+====[DSW2, ASW1-2]==========================================================================
+vlan 10
+name SRV
+vtp domain wsc2022.net
+vtp version 3
+vtp mode client
+vtp pass Skill39 hidden
+====[DSW2, ASW1-2]==========================================================================

@@ -1,0 +1,69 @@
+############################################################################################
+01. Configure EIGRP-IPv6 routing. 
+    (a) Advertise the internal network at HQ1 sites according to the routing diagram.
+    (b) Redistribute the OSPFv3 route into EIGRP-IPv6 on IR1.
+02. Configure OSPFv3 routing for IPv6. 
+    (a) Advertise IPv6 network according to the routing diagram 
+    (b) Configure appropriate OSPF network type based on the link condition 
+    (c) Redistribute the EIGRP-IPv6  route into OSPFv3 on IR1.
+    (d) Redistribute only the stateful NAT64 prefix static route into OSPFv3 on IR2.
+############################################################################################
+
+====[DS1-2, CR1-2]==========================================================================
+ipv6 uni
+ipv6 router eigrp 2024
+int range [DS1-2: g0/0-1, vlan 10, vlan 20; CR1-2: g0/1-4]
+ipv6 en
+ipv6 eigrp 2024
+exit
+====[DS1-2, CR1-2]==========================================================================
+
+====[IR1]===================================================================================
+ipv6 uni
+ipv6 router eigrp 2024
+int range g0/2-3
+ipv6 en
+ipv6 eigrp 2024
+exit
+
+ipv6 router ospf 1
+redis eigrp 2024
+int tun 0
+ipv6 en
+ipv6 ospf net broadcast
+ipv6 ospf 1 area 0
+ipv6 ospf pri 100
+ipv6 router eigrp 2024
+redis ospf 1 metric 1000000 1 255 1 1500
+exit
+====[IR1]===================================================================================
+
+====[IR2]===================================================================================
+ipv6 uni
+ipv6 prefix-list NAT64_PL per 2025:6400::/96
+route-map NAT64_RM
+mat ipv6 add pre NAT64_PL
+ipv6 router ospf 1
+redis eigrp 2024
+int tun 0
+ipv6 en
+ipv6 ospf net broadcast
+ipv6 ospf 1 area 0
+ipv6 ospf pri 50
+redis static route NAT64_RM
+exit
+====[IR2]===================================================================================
+
+====[BR1-2]=================================================================================
+ipv6 uni
+ipv6 router ospf 1
+redis eigrp 2024
+int tun 0
+ipv6 en
+ipv6 ospf net point-to-multi
+ipv6 ospf 1 area 0
+ipv6 ospf pri 0
+int g0/2
+ipv6 ospf 1 area [BR1: 3; BR2: 4]
+exit
+====[BR1-2]=================================================================================

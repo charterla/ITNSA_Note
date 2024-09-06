@@ -1,0 +1,51 @@
+############################################################################################
+01. All network devices are Cisco devices. 
+02. When considering redundancy protocols, be sure to take network bandwidth utilization into account.
+############################################################################################
+
+====[DS1-2]=================================================================================
+track 10 int vlan 10 line
+delay down 2
+track 20 int vlan 20 line
+delay down 2
+int vlan 10
+glbp 104 ip 10.255.100.254
+glbp 104 pri [DS1: 150; DS2: 100]
+glbp 104 pree
+glbp 104 authen md5 key-str Skill39!
+glbp 104 load weighted
+glbp 104 wei track 10 de 50
+standby ver 2
+standby 106 ipv6 2001:624C:3201:100::FFFF/64
+standby 106 pri [DS1: 150; DS2: 100]
+standby 106 pree
+standby 106 authen md5 key-str Skill39!
+standby 106 track 10 de 50
+int vlan 20
+glbp 204 ip 10.255.200.254
+glbp 204 pri [DS1: 100; DS2: 150]
+glbp 204 pree
+glbp 204 authen md5 key-str Skill39!
+glbp 204 load weighted
+glbp 204 wei track 20 de 50
+standby ver 2
+standby 206 ipv6 2001:624C:3201:200::FFFF/64
+standby 206 pri [DS1: 100; DS2: 150]
+standby 206 pree
+standby 206 authen md5 key-str Skill39!
+standby 206 track 20 de 50
+exit
+====[DS1-2]=================================================================================
+
+====[DS3-4]=================================================================================
+track 10 int vlan 10 line
+delay down 2
+int vlan 10
+glbp 104 ip 10.254.100.254
+glbp 104 pri [DS3: 150; DS4: 100]
+glbp 104 pree
+glbp 104 authen md5 key-str Skill39!
+glbp 104 load weighted
+glbp 104 wei track 10 de 50
+exit
+====[DS3-4]=================================================================================

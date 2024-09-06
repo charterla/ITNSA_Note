@@ -1,0 +1,36 @@
+############################################################################################
+01. Configure traffic balancing between HQ1 site and internet so that the channel through CR1 is preferred.If CR1 goes down, the channel through CR2 is used.
+02. Configure traffic balancing between HQ1 site and BR with HQ2 sites so that the channel through CR2 is preferred. If CR2 goes down, the channel through CR1 is used.
+03. Configure traffic balancing between HQ2 site and internet so that the channel through CR4 is preferred.If CR4 goes down, the channel through CR3 is used.
+04. Configure traffic balancing between HQ2 site and BR with HQ1 sites so that the channel through CR3 is preferred. If CR3 goes down, the channel through CR4 is used.
+############################################################################################
+
+====[CR1, CR3]==============================================================================
+ip prefix-list BR_PL seq 10 per 192.168.10.0/24
+ip prefix-list BR_PL seq 20 per 172.16.10.0/24
+route-map LB_RM per 10
+mat ip add pre BR_PL
+set met 1 10 255 1 1500
+ip prefix-list NONBR_PL seq 10 deny 192.168.10.0/24
+ip prefix-list NONBR_PL seq 20 deny 172.16.10.0/24
+ip prefix-list NONBR_PL seq 30 per 0.0.0.0/0 le 32
+route-map LB_RM per 20
+mat ip add pre NONBR_PL
+router eigrp 2024
+distri route LB_RM out
+exit
+====[CR1, CR3]==============================================================================
+
+====[CR2, CR4]==============================================================================
+ip prefix-list DEFAULT_PL per 0.0.0.0/0
+route-map LB_RM per 10
+mat ip add pre DEFAULT_PL
+set met 1000000 10 255 1 1500
+ip prefix-list NONDEFAULT_PL seq 5 deny 0.0.0.0/0
+ip prefix-list NONDEFAULT_PL seq 10 permit 0.0.0.0/0 le 32
+route-map LB_RM per 20
+mat ip add pre NONDEFAULT_PL
+router eigrp 2024
+distri route LB_RM out
+exit
+====[CR2, CR4]==============================================================================
