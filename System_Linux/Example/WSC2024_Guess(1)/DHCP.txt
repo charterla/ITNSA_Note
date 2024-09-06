@@ -1,0 +1,36 @@
+############################################################################################
+01. Install and configure the DHCP service.
+02. Provide DHCP service for the external client.
+03. The external client should obtain the IP address, and DNS server from the DHCP service.
+############################################################################################
+
+====[RTR]===================================================================================
+apt -y install isc-dhcp-server
+vi /etc/default/isc-dhcp-server
+----------------------/etc/default/isc-dhcp-server----------------------
+### :4s/^#//g
+### :17s/""/"ens33"/g
+### :wq
+------------------------------------------------------------------------
+vi /etc/dhcp/dhcpd.conf
+----------------------/etc/dhcp/dhcpd.conf----------------------
+### :10,11s/^/#/g
+### G
+
+subnet 8.121.199.0 netmask 255.255.255.0 {
+	range dynamic-bootp 8.121.199.100 8.121.199.200;
+	option subnet-mask 255.255.255.0;
+	option routers 8.121.199.254;
+	option domain-name-servers 8.121.199.254;
+	option domain-name "devops.com";
+}
+
+host ExtClt {
+	hardware ethernet 00:0c:29:0d:ed:bb;
+	fixed-address 8.121.199.47;
+	option host-name "ExtClt";
+}
+### :wq
+----------------------------------------------------------------
+systemctl restart isc-dhcp-server 
+====[RTR]===================================================================================

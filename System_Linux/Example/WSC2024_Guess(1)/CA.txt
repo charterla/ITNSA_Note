@@ -1,0 +1,53 @@
+############################################################################################
+01. Generate a CA certificate in the /myCA directory.
+    (a) CA certificate: ca.crt.
+    (b) CA information: CN=MyCA, O=MyOrg, C=CN.
+############################################################################################
+
+====[DMZ_SVR1]==============================================================================
+mkdir /myCA
+cd /myCA
+cp /etc/ssl/openssl.cnf myCA.cnf
+vi myCA.cnf
+----------------------myCA.cnf----------------------
+### :82s/\.\/demoCA/\/myCA/g
+### :90s/cacert.pem/ca.crt/g
+### :124,126s/match/optional/g
+### :wq
+----------------------------------------------------
+vi extensions.cnf
+----------------------extensions.cnf----------------------
+[ server ]
+basicConstraints = CA:FALSE
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+subjectAltName = @alts
+extendedKeyUsage = serverAuth
+
+[ client ]
+basicConstraints = CA:FALSE
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+subjectAltName = @alts
+extendedKeyUsage = clientAuth
+
+[ alts ]
+### :wq
+----------------------------------------------------------
+mkdir certs crl newcerts private
+touch index.txt
+echo "00" > serial
+echo "00" > crlnumber
+openssl req -x509 -new -newkey rsa:2048 -keyout private/cakey.pem -out ca.crt -days 3650 -sha256
+>Skill39!
+>Skill39!
+>CN
+>.
+>
+>MyOrg
+>
+>MyCA
+>
+openssl ca -gencrl -config myCA.cnf -out crl.pem
+>Skill39!
+====[DMZ_SVR1]==============================================================================

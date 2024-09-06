@@ -1,0 +1,83 @@
+############################################################################################
+01. Install and configure the OpenVPN service.
+02. Provide the VPN service for the external client.
+03. The external client should be able to connect to the internal network after connecting to
+04. the VPN service using openvpn@client.
+    (a) VPN client should be able to access the services in the DMZ network.
+############################################################################################
+
+====[RTR]===================================================================================
+apt -y install openvpn
+cd /etc/openvpn/server/
+ssh appadmin@10.1.20.12
+>su -
+>mkdir /myCA/openvpn
+>cd /myCA/openvpn
+>cp ../extensions.cnf openvpn-server.cnf
+>vi openvpn-server.cnf
+----------------------openvpn-server.cnf----------------------
+### G
+DNS.1 = Rtr.devops.com
+IP.1 = 8.121.199.254
+### :wq
+--------------------------------------------------------------
+>openssl req -new -nodes -newkey rsa:2048 -keyout openvpn-server.key -out openvpn-server.csr -config ../myCA.cnf
+ >.
+ >.
+ >
+ >.
+ >
+ >Rtr.devops.com
+ >
+ >
+ >
+>openssl ca -in openvpn-server.csr -out openvpn-server.crt -config ../myCA.cnf -extfile openvpn-server.cnf -extensions server
+ >Skill39!
+ >y
+ >y
+>cp ../extensions.cnf openvpn-client.cnf
+>vi openvpn-client.cnf
+----------------------openvpn-client.cnf----------------------
+### :12
+### dd
+### :14
+### dG
+### :wq
+--------------------------------------------------------------
+>openssl req -new -nodes -newkey rsa:2048 -keyout openvpn-client.key -out openvpn-client.csr -config ../myCA.cnf
+ >.
+ >.
+ >
+ >.
+ >
+ >OpenVPN-CLT
+ >
+ >
+ >
+>openssl ca -in openvpn-client.csr -out openvpn-client.crt -config ../myCA.cnf -extfile openvpn-client.cnf -extensions client
+ >Skill39!
+ >y
+ >y
+>openssl dhparam -out dhparam.pem 2048
+>chown appadmin:appadmin *
+>exit
+>exit
+scp appadmin@10.1.20.12:/myCA/openvpn/* ./
+cp ca.crt /etc/ssl/certs/
+chown appadmin:appadmin ca.crt TLSAuth.key openvpn-client.*
+openvpn --genkey secret TLSAuth.key
+cp /usr/share/doc/openvpn/examples/sample-config-files/server.conf /etc/openvpn/server/
+vi server.conf
+----------------------server.conf----------------------
+### :79,80s/server/openvpn-server/g
+### :85s/dh2048.pem/dhparam.pem/g
+### :101s/10.8.0.0/10.1.30.0/g
+### :141,142s/^;//g
+### :141,142s/192.168/10.1/g
+### :244s/ta/TLSAuth/g
+### :wq
+-------------------------------------------------------
+systemctl restart openvpn
+systemctl start openvpn-server@server
+systemctl enable openvpn-server@server
+====[RTR]===================================================================================

@@ -1,0 +1,107 @@
+############################################################################################
+01. Install and configure the Bind9 service.
+02. Provide the DNS service for all hosts.
+03. Resolve hostnames of all hosts in the company domain devops.com to the corresponding
+04. IP addresses.
+05. Other resolving requests should be forwarded to the DNS server in the DMZ network.
+06. Only allow the internal network to access the DNS service.
+############################################################################################
+
+====[RTR]===================================================================================
+apt -y install bind9 bind9utils
+cd /etc/bind
+vi named.conf
+----------------------named.conf----------------------
+### G
+include "/etc/bind/named.conf.devops.com";
+### :wq
+------------------------------------------------------
+vi named.conf.options
+----------------------named.conf.options----------------------
+### :21s/auto/no/g
+### :wq
+--------------------------------------------------------------
+vi named.conf.devops.com
+----------------------named.conf.devops.com----------------------
+acl INT {
+	10.1.10.0/24;
+	2001:db8:1001:10::/64;
+};
+acl DMZ {
+	10.1.20.0/24;
+	2001:db8:1001:20::/64;
+};
+acl VPN {
+	10.1.30.0/24;
+};
+
+view "internal" {
+	match-clients { localhost; INT; DMZ; VPN; };
+	allow-query { localhost; INT; DMZ; VPN; };
+	allow-recursion { localhost; INT; DMZ; VPN; };
+	allow-update { localhost; INT; DMZ; VPN; };
+	allow-transfer { localhost; INT; DMZ; VPN; };
+
+	zone "devops.com" IN {
+		type master;
+		file "/etc/bind/db.devops.com";
+		forwarders { 10.1.20.13; 10.1.20.14; };
+	};
+};
+
+view "external" {
+	match-clients { localhost; any; };
+	allow-query { localhost; any; };
+	allow-recursion { localhost; };
+	allow-update { localhost;  };
+	allow-transfer { localhost; };
+
+	zone "devops.com" IN {
+		type master;
+		file "/etc/bind/db.devops.com.ext";
+		forwarders { 10.1.20.13; 10.1.20.14; };
+	};
+};
+### :wq
+-----------------------------------------------------------------
+cp db.0 db.devops.com
+vi db.devops.com
+----------------------db.devops.com----------------------
+### :5s/localhost/devops.com/g
+### :6s/1/2024083001/g
+### :12s/localhost/Rtr.devops.com/g
+### o
+@	IN	A	10.1.10.254
+@	IN	A	10.1.20.254
+
+Rtr	IN	A	10.1.10.254
+Rtr	IN	A	10.1.20.254
+Rtr	IN	AAAA	2001:db8:1001:10::ffff
+Rtr	IN	AAAA	2001:db8:1001:20::ffff
+IntSvr1	IN	A	10.1.10.11
+IntSvr1	IN	AAAA	2001:db8:1001:10::11
+DmzSvr1	IN	A	10.1.20.12
+DmzSvr1	IN	AAAA	2001:db8:1001:20::12
+DmzSvr2	IN	A	10.1.20.13
+DmzSvr2	IN	AAAA	2001:db8:1001:20::13
+DmzSvr3	IN	A	10.1.20.14
+DmzSvr3	IN	AAAA	2001:db8:1001:20::14
+DmzSvr4	IN	A	10.1.20.15
+DmzSvr4	IN	AAAA	2001:db8:1001:20::15
+DmzSvr5	IN	A	10.1.20.16
+DmzSvr5	IN	AAAA	2001:db8:1001:20::16
+### :wq
+---------------------------------------------------------
+cp db.devops.com db.devops.com.ext
+vi db.devops.com.ext
+----------------------db.devops.com.ext----------------------
+### :14
+### dG
+### :13s/10.1.10.254/8.121.199.254/g
+### o
+
+Rtr	IN	A	8.121.199.254
+### :wq
+------------------------------------------------------------
+systemctl restart named 
+====[RTR]===================================================================================

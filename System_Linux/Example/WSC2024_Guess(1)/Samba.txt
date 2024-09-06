@@ -1,0 +1,43 @@
+############################################################################################
+01. Install and configure the Samba service.
+02. Share the directory /share/samba to the internal client with share name share.
+03. User appadmin should have read and write permission to the Samba share.
+04. User guest should have read-only permission to the Samba share.
+############################################################################################
+
+====[INT_SVR1]==============================================================================
+useradd -m -p Skill39! -s /bin/bash guest
+apt -y install samba
+cd /share
+mkdir samba
+chown appadmin:appadmin samba
+chmod 0775 samba
+vi /etc/samba/smb.conf
+----------------------/etc/samba/smb.conf----------------------
+### :25
+    unix charset = UTF-8
+### :37
+    interfaces = 127.0.0.0/8 10.1.10.0/24 10.1.20.0/24 10.1.30.0/24
+### G
+
+[share]
+    path = /share/samba
+    security = user
+    valid users = @appadmin, @guest
+    invalid users = root
+    guest ok = no
+    browseable = yes
+    writable = yes
+    read list = guest
+    write list = @appadmin
+    inherit permissions = yes
+### :wq
+---------------------------------------------------------------
+systemctl restart smbd
+smbpasswd -a appadmin
+>Skill39!
+>Skill39!
+smbpasswd -a guest
+>Skill39!
+>Skill39!
+====[INT_SVR1]==============================================================================

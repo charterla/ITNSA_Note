@@ -1,0 +1,32 @@
+############################################################################################
+01. Install and configure the chronyd service.
+02. Provide NTP service for all hosts.
+03. All hosts should install and configure the chrony to synchronize time with the Router.
+############################################################################################
+
+====[RTR]===================================================================================
+apt -y install chrony
+vi /etc/chrony/chrony.conf
+----------------------/etc/chrony/chrony.conf----------------------
+### :8s/^.*/local stratum 10/g
+### G
+
+allow 0.0.0.0/0
+allow ::/0
+### :wq
+-------------------------------------------------------------------
+systemctl enable chrony
+systemctl restart chrony
+====[RTR]===================================================================================
+
+====[EXT_CLT, INT_SVR1, DMZ_SVR1]===========================================================
+apt -y install chrony
+- apt -y install /media/cdrom1/pool/main/c/chrony/chrony_4.3-2+deb12u1_amd64.deb
+vi /etc/chrony/chrony.conf
+----------------------/etc/chrony/chrony.conf----------------------
+### :8s/^.*/server [EXT_CLT: 8.121.199.254; INT_SVR1: 10.1.10.254; DMZ_SVR1: 10.1.20.254]/g
+### :wq
+-------------------------------------------------------------------
+systemctl enable chrony
+systemctl restart chrony
+====[EXT_CLT, INT_SVR1, DMZ_SVR1]===========================================================

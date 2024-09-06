@@ -1,0 +1,18 @@
+############################################################################################
+01. Install and configure the SSH service.
+02. Only allow the internal network to connect to the Router using SSH.
+    (a) Not permit root login.
+    (b) Setup the SSH key for the user appadmin to login without a password in appadmin's
+environment.
+############################################################################################
+
+====[RTR]===================================================================================
+su - appadmin
+ssh-keygen
+mv ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys 
+ssh appadmin@10.1.10.11
+>mkdir .ssh
+>chmod 0700 .ssh
+>exit
+scp appadmin@10.1.10.11:/home/appadmin/.ssh/id_rsa /home/appadmin/.ssh/
+====[RTR]===================================================================================

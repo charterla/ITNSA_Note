@@ -1,0 +1,27 @@
+############################################################################################
+01. Add four disks to the Server1.
+02. Create a RAID5 array using the four disks, one of which is a spare disk.
+03. The RAID5 array space size should larger than 10GB.
+04. The RAID5 array should be mounted to the /share directory and automatically mounted
+after booting.
+############################################################################################
+
+====[INT_SVR1]==============================================================================
+apt -y install mdadm
+mdadm --create /dev/md0 --level=5 --raid-devices=3 --spare-devices=1 --size 10G /dev/sd[b-e]
+mdadm --detail --scan >> /etc/mdadm/mdadm.conf
+mkfs.ext4 /dev/md0
+mkdir /share
+chown appadmin:appadmin /share
+mdadm --detail --scan | awk '{printf "/dev/md/%s",substr($5,6)}' >> /etc/fstab
+vi /etc/fstab
+----------------------/etc/fstab----------------------
+### G
+### $
+### a
+	/share	ext4 	defaults,nofail,discard	0	0
+### :wq
+------------------------------------------------------
+systemctl daemon-reload
+init 6
+====[INT_SVR1]==============================================================================
