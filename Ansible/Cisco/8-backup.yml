@@ -1,0 +1,60 @@
+---
+  - name: Backup the running config and tracking changes for cisco hosts
+    hosts: cisco
+    gather_facts: false
+    become: true
+    vars:
+      - backupFolderPath: '/data/cisco/backup'
+    vars_files:
+      - /etc/ansible/cisco/cisco.yml
+
+    tasks:
+      - name: Create the backup folder if not exists
+        file:
+          path: "{{ backupFolderPath }}"
+          state: directory
+        delegate_to: localhost
+        run_once: yes
+
+      - name: Update cache of package
+        command: "apt update"
+        ignore_errors: true
+        delegate_to: localhost
+        run_once: yes
+
+      - name: Install the git package
+        apt:
+          pkg: git
+          state: present 
+        delegate_to: localhost
+        run_once: yes
+
+      - name: Create an empty git repository at the backup folder
+        shell: | 
+          git ls-remote {{ backupFolderPath }} -q 2>/dev/null
+          if [ $? -ne 0 ]; then git init {{ backupFolderPath }}; fi
+        delegate_to: localhost
+        run_once: yes
+
+      - name: Backup the running config of cisco hosts to the backup folder
+        cisco.ios.ios_config:
+          backup: yes
+          backup_options:
+            filename: "{{ inventory_hostname }}.cfg"
+            dir_path: "{{ backupFolderPath }}"
+        register: backupStatus
+
+      - name: Set fact to check if there is any change of running config
+        set_fact:
+          changed: true 
+        when: hostvars[item].backupStatus.changed
+        with_items: "{{ groups['cisco'] }}" 
+        run_once: yes
+
+      - name: Create a git commit when any config file has changed
+        shell: | 
+          git -C {{ backupFolderPath }} add *.cfg
+          git -C {{ backupFolderPath }} commit -am "Automated Ansible backup {{ now(utc=true, fmt='%Y-%m-%d %H:%M:%S') }}"
+        when: changed is defined
+        delegate_to: localhost
+        run_once: yes

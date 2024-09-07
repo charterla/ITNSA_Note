@@ -1,0 +1,6 @@
+New-NetFirewallRule -DisplayName "Allow ICMPv4 Inbound" -Direction Inbound -Protocol ICMPv4 -Action Allow
+New-NetFirewallRule -DisplayName "Allow WinRM HTTP Inbound" -Action Allow -LocalPort 5985 -Protocol TCP -Direction Inbound
+winrm enumelate winrm/config/Listener
+Netsh advfirewall firewall add rule name=”WinRM HTTP-in” dir=in action=allow protocol=TCP
+localport=5985
+Set-Item -Force WSMan:\localhost\Service\auth\Basic $true

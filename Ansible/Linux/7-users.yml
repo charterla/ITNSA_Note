@@ -1,0 +1,28 @@
+---
+  - name: Importing users on all Linus hosts
+    hosts: linux
+    gather_facts: false
+    become: true
+    vars:
+        usersFilePath: '/etc/ansible/users.csv'
+    vars_files:
+      - /etc/ansible/linux/linux.yml
+
+    tasks: 
+      - name: Import users from the csv file on Localhost
+        community.general.read_csv:
+            path: "{{ usersFilePath }}"
+            delimiter: ";"
+        register: users
+        delegate_to: localhost
+
+      - name: Create users as the data imported
+        user:
+          name: "{{ item['username'] }}"
+          shell: /bin/bash
+          uid: "{{ item['﻿uid'] }}"
+          home: "{{ item['home'] }}"
+          create_home: true
+          update_password: "on_create"
+          password: "{{ item['password'] | password_hash }}"
+        with_items: "{{ users.list }}"

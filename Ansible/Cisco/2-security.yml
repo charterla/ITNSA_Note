@@ -1,0 +1,39 @@
+---
+  - name: Configuring access to management interface
+    hosts: cisco
+    gather_facts: false
+    become: true
+    vars:
+      - permitHost: [ "10.22.0.251", "10.22.0.252", "10.22.0.50" ]
+      - toLimitIntName: [ "GigabitEthernet1" ]
+    vars_files:
+      - /etc/ansible/cisco/cisco.yml
+
+    tasks:
+      - name: Remove old ACL if it is exists
+        cisco.ios.ios_config:
+          lines:
+            - no ip access-list extended Management_ACL
+
+      - name: Create an ACL for limit traffic as the requirement
+        cisco.ios.ios_config:
+          lines:
+            - permit tcp host {{ item }} any eq 22
+            - permit icmp host {{ item }} any
+            - permit tcp host {{ item }} any eq 443
+          parents: ip access-list extended Management_ACL
+        with_items: "{{ permitHost }}"
+        
+      - name: Deny all other traffic in the ACL
+        cisco.ios.ios_config:
+          lines:
+            - deny ip any any
+            - deny icmp any any
+          parents: ip access-list extended Management_ACL
+
+      - name: Apply the ACL to the interface to limit traffic
+        cisco.ios.ios_config:
+          lines:
+            - ip access-group Management_ACL in
+          parents: interface {{ item }}
+        with_items: "{{ toLimitIntName }}"

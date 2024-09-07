@@ -1,0 +1,31 @@
+---
+  - name: Configure the internal BGP routing of the internal and the edge cisco hosts
+    hosts: cisco
+    gather_facts: false
+    become: true
+    vars:
+      - LoIdx: 0
+    vars_files:
+      - /etc/ansible/cisco/cisco.yml
+
+    tasks:
+      - name: Set fact to store the ip address of loopback interface
+        set_fact:
+          loopbackIP: "{{ loop_net | ipaddr( groups['cisco'].index(inventory_hostname) | int + 1 ) | ipaddr('address') }}"
+
+      - name: Configure the peers of each internal and edge cisco hosts
+        cisco.ios.ios_config:
+          lines:
+            - neighbor {{ hostvars[item].loopbackIP }} remote-as {{ bgp_as_internal }}
+            - neighbor {{ hostvars[item].loopbackIP }} update-source Loopback{{ LoIdx }}
+          parents: router bgp {{ bgp_as_internal }}
+        loop: "{{ (groups['internal'] + groups['edge']) | reject('eq', inventory_hostname) }}"
+        when: inventory_hostname in (groups["internal"] + groups["edge"]) 
+
+      - name: Advertise the networks on iBGP protocal as the requirement
+        cisco.ios.ios_config:
+          lines:
+            - network {{ loopbackIP }} mask 255.255.255.255
+            - network 10.0.0.0 mask 255.255.255.0
+          parents: router bgp {{ bgp_as_internal }}
+        when: inventory_hostname in (groups["internal"] + groups["edge"]) 

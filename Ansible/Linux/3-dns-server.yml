@@ -1,0 +1,104 @@
+---
+  - name: DNS Server set up
+    hosts: all 
+    gather_facts: false
+    become: true
+    vars:
+      forward_record_file_path: /etc/bind/applix.com.lan
+      reserve_record_file_path: /etc/bind/0.22.10.db
+      forward_record_file_path_slave: /var/cache/bind/applix.com.lan
+      reserve_record_file_path_slave: /var/cache/bind/0.22.10.db
+      options_file_path: /etc/bind/named.conf.options
+      zone_file_path: /etc/bind/named.conf.internal-zones  
+      zone_include_file_path: /etc/bind/named.conf
+      addition_host_name: intranet
+      addition_host_ip: 10.22.0.51
+    vars_files:
+      - /etc/ansible/linux/linux.yml
+
+    tasks:
+      - name: Install Bind 9 DNS
+        ansible.builtin.apt:
+          pkg:
+            - bind9
+            - bind9utils
+        when: inventory_hostname in groups["dns"]
+
+      - name: Assign the SOA Record to the Record file
+        shell: |
+          cp /etc/bind/db.local "{{ forward_record_file_path }}"
+          head -n -3 "{{ forward_record_file_path }}" > tmp.db && mv tmp.db "{{ forward_record_file_path }}"
+          sed -i 's/localhost/{{ hostname }}.applix.com/' "{{ forward_record_file_path }}"
+          sed -i 's/root.localhost/appadmin.applix.com/' "{{ forward_record_file_path }}"
+          sed -i '/; Serial/ c\\t\t     {{ lookup('pipe', 'date +%Y%m%d%S') }} \t; Serial' "{{ forward_record_file_path }}"
+          cp /etc/bind/db.local "{{ reserve_record_file_path }}"
+          head -n -3 "{{ reserve_record_file_path }}" > tmp.db && mv tmp.db "{{ reserve_record_file_path }}"
+          sed -i 's/localhost/{{ hostname }}.applix.com/' "{{ reserve_record_file_path }}"
+          sed -i 's/root.localhost/appadmin.applix.com/' "{{ reserve_record_file_path }}"
+          sed -i '/; Serial/ c\\t\t     {{ lookup('pipe', 'date +%Y%m%d%S') }} \t; Serial' "{{ reserve_record_file_path }}"
+        when: inventory_hostname == groups["dns"][0]
+
+      - name: Assign the NS Records to the Record file
+        shell: |
+          echo "\tIN\tNS\t{{ hostname }}.applix.com." >> "{{ forward_record_file_path }}"
+          echo "\tIN\tA\t{{ ansible_host }}" >> "{{ forward_record_file_path }}"
+          echo "\tIN\tNS\t{{ hostname }}.applix.com." >> "{{ reserve_record_file_path }}"
+        when: inventory_hostname in groups["dns"]
+        delegate_to: "{{ groups['dns'][0] }}"
+
+      - name: Assign the A & PTR Records to the Record file
+        shell: |
+          echo "{{ hostname }}\tIN\tA\t{{ ansible_host }}" >> "{{ forward_record_file_path }}"
+          echo "{{ ansible_host.split('.')[3] }}\tIN\tPTR\t{{ hostname }}.applix.com." >> "{{ reserve_record_file_path }}"
+        delegate_to: "{{ groups['dns'][0] }}"
+
+      - name: Assign the Addition A & PTR Records to the Record file
+        shell: |
+          echo "{{ addition_host_name }}\tIN\tA\t{{ addition_host_ip }}" >> "{{ forward_record_file_path }}"
+          echo "{{ addition_host_ip.split('.')[3] }}\tIN\tPTR\t{{ addition_host_name }}.applix.com." >> "{{ reserve_record_file_path }}"
+        when: inventory_hostname == groups["dns"][0]
+
+      - name: Delete repeat zone include
+        lineinfile:
+          dest: "{{ zone_include_file_path }}"
+          regexp: "{{ zone_file_path }}"
+          state: absent
+        when: inventory_hostname in groups["dns"]
+
+      - name: Configurate options and zone include of DNS Server
+        shell: |
+          echo "include \"{{ zone_file_path }}\";" >> "{{ zone_include_file_path }}"
+          echo "\
+          options {
+            \tdirectory \"/var/cache/bind\";
+            \tallow-query { localhost; 10.22.0.0/24; };\n\tallow-update { localhost; 10.22.0.0/24; };
+            \tallow-transfer { localhost; 10.22.0.0/24; };\n\trecursion yes;\n};" > "{{ options_file_path }}"
+        when: inventory_hostname in groups["dns"]
+
+      - name: Zone configuration for Master
+        shell: |
+          echo "\
+          zone \"applix.com\" IN {
+            \ttype master;\n\tfile \"{{ forward_record_file_path }}\";\n};\n
+          zone \"0.22.10.in-addr.arpa\" IN {
+            \ttype master;\n\tfile \"{{ reserve_record_file_path }}\";\n};
+          " > "{{ zone_file_path }}"
+        when: inventory_hostname == groups["dns"][0]
+
+      - name: Zone configuration for Slave
+        shell: |
+          echo "\
+          zone \"applix.com\" IN {
+            \ttype slave;\n\tmasters { {{ hostvars[groups['dns'][0]].ansible_host }}; };\n\tfile \"{{ forward_record_file_path_slave }}\";\n};\n
+          zone \"0.22.10.in-addr.arpa\" IN {
+            \ttype slave;\n\tmasters { {{ hostvars[groups['dns'][0]].ansible_host }}; };\n\tfile \"{{ reserve_record_file_path_slave }}\";\n};
+          " > "{{ zone_file_path }}"
+        when: inventory_hostname in groups["dns"] and inventory_hostname != groups["dns"][0]
+
+      - name: Restart DNS Server in Master
+        command: "systemctl restart named"
+        when: inventory_hostname == groups["dns"][0]
+
+      - name: Restart DNS Server in Slave
+        command: "systemctl restart named"
+        when: inventory_hostname in groups["dns"] and inventory_hostname != groups["dns"][0]

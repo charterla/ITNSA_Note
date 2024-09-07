@@ -1,0 +1,90 @@
+---
+  - name: Create NFS shares on "nfs" linux hosts
+    hosts: nfs
+    gather_facts: false
+    become: true
+    vars:
+      - FSType: 'ext4'
+      - ShareDirectoryPath: '/nfs'
+      - NFSCfgFilePath: '/etc/exports'
+      - NFSShareTag: '# NFS Share in applix.com domain - '
+      - NFSClient: '10.22.0.50'
+    vars_files:
+      - /etc/ansible/linux/linux.yml
+
+    tasks: 
+      - name: Get the name of main VG
+        shell: | 
+          vgs --no-heading -o vg_name
+        register: VGName
+
+      - name: Get the name list of LV
+        shell: | 
+          lvs --no-heading -o lv_name
+        register: LVNameList
+
+      - name: Set fact to store results
+        set_fact:
+          VGName: "{{ VGName.stdout_lines[0] | regex_replace(' ', '') }}"
+          LVNameList: "{{ ( LVNameList.stdout | regex_replace(' ', '') | string ).split('\n') }}"
+
+      - name: Create the new LVs with a specify size if not exists
+        community.general.lvol:
+          vg: "{{ VGName }}"
+          lv: "{{ item.name }}"
+          size: "{{ item.size }}"
+        when: item.name not in LVNameList
+        with_items: "{{ shares }}"
+
+      - name: Format the new LVs with ext4 filesystem
+        community.general.filesystem:
+          fstype: "{{ FSType }}"
+          dev: "/dev/{{ VGName }}/{{ item.name }}"
+        with_items: "{{ shares }}"
+
+      - name: Create the directory for mounting the new LVs
+        file:
+          path: "{{ ShareDirectoryPath }}/{{ item.name }}"
+          state: directory
+          recurse: true
+        with_items: "{{ shares }}"
+
+      - name: Mount the new LVs to the directory for sharing
+        mount:
+          path: "{{ ShareDirectoryPath }}/{{ item.name }}"
+          src: "/dev/{{ VGName }}/{{ item.name }}"
+          fstype: "{{ FSType }}"
+          state: mounted
+        with_items: "{{ shares }}"
+
+      - name: Update cache of package
+        command: "apt update"
+        ignore_errors: true
+
+      - name: Install the NFS server 
+        apt:
+          pkg:
+            - nfs-kernel-server
+          state: present
+
+      - name: Set fact of generate the config of the NFS shares
+        set_fact:
+          NFSCfg: "{{ NFSCfg is defined | ternary(NFSCfg, []) + [ '%s/%s\t%s(rw,sync,no_root_squash)' | format(ShareDirectoryPath, item.name, NFSClient) ] }}" 
+        with_items: "{{ shares }}"
+
+      - name: Configure the NFS shares
+        blockinfile:
+          path: "{{ NFSCfgFilePath }}"
+          block: |
+            {{ NFSCfg | join('\n') }}
+          marker: "{{ NFSShareTag }}{mark}"
+
+      - name: Replace the '\n' to newline and '\t' to tab
+        shell: |
+          sed -i 's/\\n/\n/g' {{ NFSCfgFilePath }}
+          sed -i 's/\\t/\t/g' {{ NFSCfgFilePath }}
+
+      - name: Restate the NFS service to apply the config
+        service:
+          name: nfs-kernel-server
+          state: restarted

@@ -1,0 +1,99 @@
+---
+  - name: Configuring DNS server backup
+    hosts: backup
+    gather_facts: false
+    become: true
+    vars:
+        backupServicePath: '/etc/backup_dns/'
+        backupDirectoryPath: '/backups/'
+    vars_files:
+      - /etc/ansible/linux/linux.yml
+
+    tasks: 
+      - name: Update cache of package
+        command: "apt update"
+        ignore_errors: true
+
+      - name: Install the SSHPass
+        apt:
+          pkg:
+            - sshpass
+          state: present
+
+      - name: Create the Directory for storing the service
+        file:
+          path: "{{ backupServicePath }}"
+          state: directory 
+          recurse: true
+
+      - name: Set fact to store the IP address and the hostname of all "dns" hosts
+        set_fact:
+          dnsIPList: "{{ dnsIPList is defined | ternary(dnsIPList, []) + [ hostvars[item].ansible_host ] }}"
+          dnsHostnameList: "{{ dnsHostnameList is defined | ternary(dnsHostnameList , []) + [ hostvars[item].hostname ] }}"
+        loop: "{{ groups['dns'] }}"
+
+      - name: Create the shell script of the service
+        copy:
+          content: |
+            #!/bin/bash
+            set -e
+
+            dnsIPList=({{ dnsIPList | join(' ') }})
+            dnsHostnameList=({{ dnsHostnameList | join(' ') }})
+            timestamp=$(date +%Y-%m-%d_%H-%M-%S)
+            for idx in {0..{{ groups['dns'] | length - 1 }}}
+            do
+                if sshpass -p "{{ ansible_password }}" scp -o StrictHostKeyChecking=accept-new "{{ ansible_user }}@${dnsIPList[$idx]}:/etc/bind/*db*" {{ backupDirectoryPath }} 2>/dev/null; then :; fi
+                if sshpass -p "{{ ansible_password }}" scp -o StrictHostKeyChecking=accept-new "{{ ansible_user }}@${dnsIPList[$idx]}:/etc/bind/*lan*" {{ backupDirectoryPath }} 2>/dev/null; then :; fi
+                if sshpass -p "{{ ansible_password }}" scp -o StrictHostKeyChecking=accept-new "{{ ansible_user }}@${dnsIPList[$idx]}:/var/cache/bind/*db*" {{ backupDirectoryPath }} 2>/dev/null; then :; fi
+                if sshpass -p "{{ ansible_password }}" scp -o StrictHostKeyChecking=accept-new "{{ ansible_user }}@${dnsIPList[$idx]}:/var/cache/bind/*lan*" {{ backupDirectoryPath }} 2>/dev/null; then :; fi
+                tar -C {{ backupDirectoryPath }} -zcvf $(echo {{ backupDirectoryPath }}${timestamp}_${dnsHostnameList[$idx]}.tar.gz) $(ls {{ backupDirectoryPath }} | grep -v 'tar.gz') 1>/dev/null
+                rm $(ls -d {{ backupDirectoryPath }}* | grep -v 'tar.gz')
+            done
+          dest: "{{ backupServicePath }}backup_dns.sh"
+          mode: "0755"
+
+      - name: Create the Directory for storing the backup files
+        file:
+          path: "{{ backupDirectoryPath }}"
+          state: directory 
+          recurse: true
+
+      - name: Create the corresponding service unit
+        copy:
+          content: |
+            [Unit]
+            Description=Backup DNS zones file on other hosts
+
+            [Service]
+            Type=oneshot
+            User=root
+            Group=root
+            ExecStart={{ backupServicePath }}backup_dns.sh
+
+            [Install]
+            WantedBy=multi-user.target
+          dest: /etc/systemd/system/backup_dns.service
+          mode: "0755"
+
+      - name: Create the corresponding service timer
+        copy:
+          content: |
+            [Unit]
+            Description=Backup DNS zones file on other hosts
+
+            [Timer]
+            Unit=backup_dns.service
+            OnActiveSec=5sec
+            OnUnitActiveSec=5min
+
+            [Install]
+            WantedBy=multi-user.target
+          dest: /etc/systemd/system/backup_dns.timer
+          mode: "0755"
+
+      - name: Activate the service and the timer of backup DNS zones file
+        shell: |
+          systemctl daemon-reload
+          systemctl enable backup_dns.timer
+          systemctl restart backup_dns.timer

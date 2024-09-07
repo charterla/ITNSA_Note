@@ -1,0 +1,48 @@
+---
+  - name: Configure the linux web hosts to provide web service
+    hosts: web
+    gather_facts: false
+    become: true
+    vars:
+      port_file_path: /etc/apache2/ports.conf
+      default_site_conf_path: /etc/apache2/sites-available/000-default.conf
+      default_directory_path: /var/www/html
+      virtual_host_site_conf_path: /etc/apache2/sites-available/intranet.conf
+      virtual_host_directory_path: /var/www/intranet
+    vars_files:
+      - /etc/ansible/linux/linux.yml
+
+    tasks:
+      - name: Install Apache 2
+        ansible.builtin.apt:
+          pkg:
+            - apache2
+    
+      - name: Set the port to listen
+        shell: | 
+          sed -i '/Listen 8081/ d' "{{ port_file_path }}"
+          sed -i 's/^Listen.*/Listen {{ webport }}\nListen 8081/' "{{ port_file_path }}"
+          sed -i 's/\*:.*\>/\*:{{ webport }}\>/g' "{{ default_site_conf_path }}"
+
+      - name: Change the content shown in index page
+        copy:
+          dest: "{{ default_directory_path }}/index.html"
+          content: '<!DOCTYPE html><html><body><h1 style="color: {{ webcolor }}">Hello from {{ hostname }}!</h1></body></html>'
+
+      - name: Configure virtual host of web service
+        shell: |
+          mkdir "{{ virtual_host_directory_path }}"
+          chmod 755 "{{ virtual_host_directory_path }}"
+          echo "<VirtualHost *:8081>\n\tDocumentRoot {{ virtual_host_directory_path }}\
+            \n\tServerName intranet.applix.com\n\tServerAdmin appadmin@applix.com\n</VirtualHost>" > "{{ virtual_host_site_conf_path }}"
+          a2ensite intranet
+
+      - name: Create the /index html file of virtual host 
+        shell: | 
+          echo "<!DOCTYPE html><html><body><h1>Welcome to the intranet of Applix</h1>\
+            <p>This site was served by {{ hostname }}</p></body></html>" > "{{ virtual_host_directory_path }}/index.html"
+
+      - name: Restart the Apache 2 to apply config change
+        service:
+          name: apache2
+          state: restarted

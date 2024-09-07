@@ -1,0 +1,45 @@
+---
+ - name: Configuring security settings on all Windows Hosts
+   hosts: windows
+   gather_facts: true
+   vars:
+     dataFilePath: C:\\uptime.txt
+     programFilePath: C:\\LogUptime.ps1
+     programFilePath_: C:\LogUptime.ps1
+   vars_files:
+    - /etc/ansible/windows/windows.yml
+
+   tasks:
+    - name: Stop and disable the Remote Desktop Service on all Window Hosts
+      win_service:
+        name: TermService
+        start_mode: disabled
+        state: stopped
+
+    - name: Create the powershell file for LogUptime scheduled task
+      win_copy:
+        content: |
+          $uptime = $((Get-Date) - (Get-CimInstance Win32_OperatingSystem).LastBootUpTime)
+          Add-Content -Path {{ dataFilePath }} -Value $("{0:d2} days {1:d2} hours {2:d2} minutes {3:d2} seconds" -f $uptime.Days, $uptime.Hours, $uptime.Minutes, $uptime.Seconds)
+          Start-Sleep -s 30
+          $uptime = $((Get-Date) - (Get-CimInstance Win32_OperatingSystem).LastBootUpTime)
+          Add-Content -Path {{ dataFilePath }} -Value $("{0:d2} days {1:d2} hours {2:d2} minutes {3:d2} seconds" -f $uptime.Days, $uptime.Hours, $uptime.Minutes, $uptime.Seconds)
+        dest: "{{ programFilePath_ }}"
+
+    - name: Create the LogUptime scheduled task
+      win_scheduled_task:
+        name: LogUptime
+        description: 'Append current uptime to {{ dataFilePath }}'
+        actions:
+          - path: powershell.exe
+            arguments: '-ExecutionPolicy Bypass -File {{ programFilePath }}'
+        triggers:
+          - type: time
+            start_boundary: "{{ ansible_date_time.date }}"
+            repetition:
+              interval: "PT1M"
+        username: SYSTEM
+        state: present
+        enable: yes
+        execution_time_limit: "PT0S"
+        compaatibility: 4

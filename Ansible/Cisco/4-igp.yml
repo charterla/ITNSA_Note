@@ -1,0 +1,22 @@
+---
+  - name: Configure the internal dynamic routing of the cisco hosts
+    hosts: cisco
+    gather_facts: false
+    become: true
+    vars_files:
+      - /etc/ansible/cisco/cisco.yml
+
+    tasks:
+      - name: Configure the info of the IGP routing protocol
+        cisco.ios.ios_config:
+          lines:
+            - network 10.0.0.0 0.0.0.255 area 0
+          parents: router ospf 1
+        when: inventory_hostname in (groups["internal"] + groups["edge"]) 
+ 
+      - name: Advertise loopback interface 0
+        cisco.ios.ios_config:
+          lines:
+            - ip ospf 1 area 0
+          parents: interface Loopback0
+        when: inventory_hostname in (groups["internal"] + groups["edge"]) 

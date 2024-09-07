@@ -1,0 +1,72 @@
+---
+ - name: Configuring certificates in the Windows Hosts
+   hosts: windows
+   gather_facts: false
+   vars:
+    pwd: /etc/ansible/windows
+    CertFolder: C:\Certs
+    CertPath: C:\Certs\Certs.cer
+    PfxCertPath: C:\Certs\CACerts.pfx
+   vars_files:
+    - /etc/ansible/windows/windows.yml
+
+   tasks:
+    - name: Set the main Trusted CA Hosts
+      set_fact:
+        mainTrustedCA: "{{ inventory_hostname }}"
+      when: hostvars[inventory_hostname]["RootCAPriv"] | default(false)
+      run_once: yes
+
+    - name: Make the directory for storing certificates
+      win_file:
+        path: "{{ CertFolder }}"
+        state: directory
+
+    - name: Self-Sign the CA certificate in the main Trusted CA Hosts
+      win_shell: | 
+        Get-ChildItem cert:\LocalMachine\My | where { $_.Subject -eq "CN=Applix Root CA, O=Applix Corporation, C=KR" }| Remove-Item 
+        $Certificate = New-SelfSignedCertificate -Subject "CN=Applix Root CA, O=Applix Corporation, C=KR" -CertStoreLocation Cert:\LocalMachine\My
+        Export-Certificate -Cert $Certificate -FilePath {{ CertPath }}
+        $PfxCertPwd = ConvertTo-SecureString -String "{{ ansible_password }}" -Force -AsPlainText
+        Export-PfxCertificate -Cert $Certificate -FilePath {{ PfxCertPath }} -Password $PfxCertPwd
+      when: hostvars[inventory_hostname]["RootCAPriv"] | default(false)
+      run_once: yes
+
+    - name: Copy the CA certificate to Local
+      fetch:
+        src: "{{ PfxCertPath }}"
+        dest: "{{ pwd }}/CACerts.pfx"
+        flat: yes
+      when: hostvars[inventory_hostname]["RootCAPriv"] | default(false)
+      run_once: yes
+    
+    - name: Copy the CA certificate to other Trusted CA Hosts
+      win_copy:
+        src: "{{ pwd }}/CACerts.pfx"
+        dest: "{{ PfxCertPath }}"
+      when: hostvars[inventory_hostname]["RootCAPriv"] and inventory_hostname != mainTrustedCA | default(false)
+
+    - name: Import the CA certificate to other Trusted CA Hosts
+      win_shell: | 
+        Get-ChildItem cert:\LocalMachine\My | where { $_.Subject -eq "CN=Applix Root CA, O=Applix Corporation, C=KR" } | Remove-Item 
+        $PfxCertPwd = ConvertTo-SecureString -String "{{ ansible_password }}" -Force -AsPlainText
+        Import-PfxCertificate -Filepath {{ PfxCertPath }} -CertStoreLocation Cert:\LocalMachine\My -Password $PfxCertPwd
+      when: hostvars[inventory_hostname]["RootCAPriv"] and inventory_hostname != mainTrustedCA | default(false)
+
+    - name: Copy the certificate to Local
+      fetch:
+        src: "{{ CertPath }}"
+        dest: "{{ pwd }}/Certs.cer"
+        flat: yes
+      when: hostvars[inventory_hostname]["RootCAPriv"] | default(false)
+      run_once: yes
+    
+    - name: Copy the certificate to other Hosts
+      win_copy:
+        src: "{{ pwd }}/Certs.cer"
+        dest: "{{ CertPath }}"
+
+    - name: Import the certificate to other Hosts
+      win_shell: | 
+        Get-ChildItem cert:\LocalMachine\Root | where { $_.Subject -eq "CN=Applix Root CA, O=Applix Corporation, C=KR" } | Remove-Item 
+        Import-Certificate -Filepath {{ CertPath }} -CertStoreLocation Cert:\LocalMachine\Root 

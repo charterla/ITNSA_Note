@@ -1,0 +1,17 @@
+---
+ - name: Installing Windows tools on the Windows hosts with GUI
+   hosts: windows
+   gather_facts: false
+   vars_files:
+    - /etc/ansible/windows/windows.yml
+
+   tasks:
+    - name: Check whether the Windows hosts is with a GUI installation
+      win_shell: |
+        $(Get-ComputerInfo).WindowsInstallationType
+      register: installationType
+
+    - name: Install the telnet client on servers with a GUI installation of Windows
+      win_shell: |
+        Enable-WindowsOptionalFeature -Online -FeatureName "TelnetClient"
+      when: installationType.stdout_lines[0] == "Server"

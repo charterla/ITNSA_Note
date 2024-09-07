@@ -1,0 +1,47 @@
+---
+ - name: Deploying customer web environments on AD Domain Controller 
+   hosts: dc[0]
+   gather_facts: false
+   vars:
+    - domainPath: 'DC=customers,DC=com'
+    - domainIdentity: 'customers.com'
+    - webDirectoryPath: 'C:\WebSite'
+   vars_files:
+    - /etc/ansible/windows/windows.yml
+
+   tasks:
+    - name: Read the customers info from local json file
+      set_fact:
+        customers: "{{ lookup('file', '../customers.json') | from_json }}"
+      delegate_to: localhost
+
+    - name: Create an OU based on "name" attribute
+      win_shell: | 
+        if (!(Get-ADOrganizationalUnit -Filter "name -eq '{{ item.name }}'")) {
+            New-ADOrganizationalUnit -Name "{{ item.name }}" -Path "{{ domainPath }}"
+        }
+      loop: "{{ customers }}"
+
+    - name: Create an AD user based on "username" and "password" attribute in corresponding OU
+      win_shell: |
+        if (!(Get-ADUser -Filter "name -eq '{{ item.username }}'")) {
+            New-ADUser -Name "{{ item.username }}" -AccountPassword (ConvertTo-SecureString -AsPlainText '{{ item.password }}' -Force) -Enabled $true -Path "OU={{ item.name }},{{ domainPath }}" -ChangePasswordAtLogon $false -PasswordNeverExpires $true
+        }
+      loop: "{{ customers }}"
+
+    - name: Create a DNS entry for domain_prefix.customers.com pointing to a random IIS server
+      win_shell: | 
+        if (!(Get-DnsServerResourceRecord -ZoneName "{{ domainIdentity }}" -Name "{{ item.domain_prefix }}")) {
+            Add-DnsServerResourceRecordA -Name "{{ item.domain_prefix }}" -Zonename "{{ domainIdentity }}" -AllowUpdateAny -IPv4Address "{{ hostvars[ groups['iis'] | random(seed = item.domain_prefix) ].ansible_host }}"
+        }
+      loop: "{{ customers }}"
+
+    - name: Create a virtual host listening on port 80 on the selected IIS server which displays the "message" attribute
+      win_shell: | 
+        New-Item -ItemType Directory -Force -Path "{{ webDirectoryPath }}\{{ item.name }}" 
+        New-Item -ItemType File -Force -Path "{{ webDirectoryPath }}\{{ item.name }}" -Name "index.html" -Value "{{ item.message }}"
+        if(!(Get-IISSite -Name "{{ item.name }}")) {
+            New-IISSite -Name "{{ item.name }}" -BindingInformation "*:80:{{ item.domain_prefix }}.{{ domainIdentity }}" -PhysicalPath "{{ webDirectoryPath}}\{{ item.name }}"
+        }
+      delegate_to: "{{ hostvars[ groups['iis'] | random(seed = item.domain_prefix) ].ansible_host }}"
+      loop: "{{ customers }}"

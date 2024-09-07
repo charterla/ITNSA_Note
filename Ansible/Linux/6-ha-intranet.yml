@@ -1,0 +1,118 @@
+---
+  - name: Configura Linux HA servers for intranet.applix.com
+    hosts: ha
+    order: reverse_inventory
+    gather_facts: false
+    become: true
+    vars:
+      - NetAdaptorName: ens33
+      - VRRPVRID: 100
+      - VRRPPriorityBase: 128
+      - VRRPPriorityDivisor: 32
+      - VRRPIPAddress: 10.22.0.51/24
+      - HAProxyCfgTag: '# HAProxy Config for intranet.applix.com - '  
+      - Apache2CfgToHAProxyTag: '# Apache2 Config to HAProxy for intranet.applix.com - '  
+    vars_files:
+      - /etc/ansible/linux/linux.yml
+
+    tasks:
+      - name: Update cache of package
+        command: "apt update"
+        ignore_errors: true
+
+      - name: Install keepalived and HAProxy package
+        ansible.builtin.apt:
+          pkg:
+            - haproxy
+            - keepalived
+          state: present
+
+      - name: Set the fact for specifing the VRRP master
+        set_fact:
+          VRRPMaster: "{{ inventory_hostname }}"
+        run_once: yes
+
+      - name: Configure the VRRP servers 
+        copy:
+          content: | 
+            global_defs {
+                router_id {{ hostname }}
+            }
+
+            vrrp_instance VRRP1 {
+                state {{ (inventory_hostname == VRRPMaster) | ternary('MASTER', 'BACKUP') }}
+                # nopreempt
+                interface {{ NetAdaptorName }}
+                virtual_router_id {{ VRRPVRID }}
+                priority {{ (VRRPPriorityBase+VRRPPriorityDivisor*groups['ha'].index(inventory_hostname)) | int }}
+                advert_int 1
+                authentication {
+                    auth_type PASS
+                    auth_pass {{ ansible_password }}
+                } 
+                virtual_ipaddress {
+                    {{ VRRPIPAddress }}
+                }
+            }
+          dest: /etc/keepalived/keepalived.conf
+ 
+      - name: Restart the Keepalived to apply the config
+        service:
+          name: keepalived
+          state: restarted
+
+      - name: Set fact for listing web servers in the config of the HAProxy servers
+        set_fact:
+          WebServersList: "{{ WebServersList is defined | ternary(WebServersList, []) + [ '    server    node%02d %s:8081 check' | format(groups[\"web\"].index(item) + 1 | int, hostvars[item].ansible_host) ] }}"
+        with_items: "{{ groups['web'] }}"
+        run_once: yes
+
+      - name: Configure the HAProxy servers 
+        blockinfile:
+          path: /etc/haproxy/haproxy.cfg
+          block: |
+            frontend http-in
+                bind *:80
+                default_backend backend_servers
+            backend backend_servers
+                balance    roundrobin
+                http-response set-header X-HAProxy-Host "%H"
+            {{ WebServersList | join('\n') }}
+          marker: "{{ HAProxyCfgTag }}{mark}"
+
+      - name: Replace the '\n' to newline
+        shell: |
+          sed -i 's/\\n/\n/g' /etc/haproxy/haproxy.cfg
+
+      - name: Restart the HAProxy to apply the config
+        service:
+          name: haproxy
+          state: restarted
+
+      - name: Enable the apache mod in the Web servers to handle the HTTP request from HAProxy servers
+        shell: |
+          a2enmod remoteip
+          a2enmod headers
+        delegate_to: "{{ item }}"
+        loop: "{{ groups['web'] }}"
+        run_once: yes
+
+      - name: Configure the Web servers to handle the HTTP request from HAProxy servers
+        blockinfile:
+          path: /etc/apache2/apache2.conf
+          block: |
+            RemoteIPHeader X-HAProxy-Host
+            RemoteIPHeader X-Forwarder-For
+            RemoteIPInternalProxy {{ VRRPIPAddress }}
+          marker: "{{ Apache2CfgToHAProxyTag }}{mark}"
+        delegate_to: "{{ item }}"
+        loop: "{{ groups['web'] }}"
+        run_once: yes
+
+      - name: Restart the Apache2 to apply the config
+        service:
+          name: apache2
+          state: restarted
+        delegate_to: "{{ item }}"
+        loop: "{{ groups['web'] }}"
+        run_once: yes

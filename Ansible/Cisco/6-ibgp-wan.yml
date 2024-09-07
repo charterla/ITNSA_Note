@@ -1,0 +1,46 @@
+---
+  - name: Configure the internal BGP routing of the external cisco hosts
+    hosts: cisco
+    gather_facts: false
+    become: true
+    vars:
+      - LoIdx: 0
+      - defaultLoIdx: [1, 99]
+      - externalIntName: "GigabitEthernet3"
+    vars_files:
+      - /etc/ansible/cisco/cisco.yml
+
+    tasks:
+      - name: Get the ip address of the default loopback interface
+        cisco.ios.ios_facts:
+          gather_subset: min
+          gather_network_resources: l3_interfaces
+        register: interfaceInfo
+
+      - name: Set fact to store the ip address of the default loopback interface as list
+        set_fact:
+          defaultLoopbackIP: "{{ defaultLoopbackIP is defined | ternary(defaultLoopbackIP, []) + [ item['ipv4'][0].address.split()[0] ] }}"
+        when: item.name in (['loopback'] | product(defaultLoIdx) | map('join')) 
+        loop: "{{ interfaceInfo['ansible_facts']['ansible_network_resources']['l3_interfaces'] }}"
+
+      - name: Set fact to store the external ip address of each external cisco hosts
+        set_fact:
+          externalIP: "{{ item['ipv4'][0]['address'].split()[0] }}"
+        when: inventory_hostname in groups["external"] and item.name == externalIntName
+        loop: "{{ interfaceInfo['ansible_facts']['ansible_network_resources']['l3_interfaces'] }}"
+
+      - name: Configure the peers of each external cisco hosts
+        cisco.ios.ios_config:
+          lines:
+            - neighbor {{ hostvars[item].externalIP }} remote-as {{ bgp_as_external }}
+          parents: router bgp {{ bgp_as_external }}
+        loop: "{{ groups['external'] | reject('eq', inventory_hostname) }}"
+        when: inventory_hostname in groups["external"]        
+
+      - name: Advertise the networks on iBGP protocal as the requirement
+        cisco.ios.ios_config:
+          lines:
+            - network {{ item }} mask 255.255.255.255
+          parents: router bgp {{ bgp_as_external }}
+        loop: "{{ defaultLoopbackIP }}"
+        when: inventory_hostname in groups["external"]

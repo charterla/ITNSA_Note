@@ -1,0 +1,48 @@
+---
+  - name: Configure the external BGP routing of the external and the edge cisco hosts
+    hosts: cisco
+    gather_facts: false
+    become: true
+    vars:
+      - externalIntName: "GigabitEthernet3"
+      - eBGPPassword: "EBGP$Secret"
+    vars_files:
+      - /etc/ansible/cisco/cisco.yml
+
+    tasks:
+      - name: Get the ip address of the default loopback interface
+        cisco.ios.ios_facts:
+          gather_subset: min
+          gather_network_resources: l3_interfaces
+        register: interfaceInfo
+
+      - name: Set fact to store the external ip address of each external and edge cisco hosts
+        set_fact:
+          externalIP: "{{ item['ipv4'][0]['address'].split()[0] }}"
+        when: inventory_hostname in (groups["external"] + groups["edge"]) and item.name == externalIntName
+        loop: "{{ interfaceInfo['ansible_facts']['ansible_network_resources']['l3_interfaces'] }}"
+
+      - name: Configure the peers of each external cisco hosts
+        cisco.ios.ios_config:
+          lines:
+            - neighbor {{ hostvars[item].externalIP }} remote-as {{ bgp_as_internal }}
+            - neighbor {{ hostvars[item].externalIP }} password {{ eBGPPassword }}
+          parents: router bgp {{ bgp_as_external }}
+        loop: "{{ groups['edge'] }}"
+        when: inventory_hostname in groups["external"]
+
+      - name: Configure the peers of each edge cisco hosts
+        cisco.ios.ios_config:
+          lines:
+            - neighbor {{ hostvars[item].externalIP }} remote-as {{ bgp_as_external }}
+            - neighbor {{ hostvars[item].externalIP }} password {{ eBGPPassword }}
+          parents: router bgp {{ bgp_as_internal }}
+        loop: "{{ groups['external'] }}"
+        when: inventory_hostname in groups["edge"]
+
+      - name: Ensure that eBGP peerings are load balanced
+        cisco.ios.ios_config:
+          lines:
+            - maximum-paths {{ (groups["external"] + groups["edge"]) | length }}
+          parents: router bgp {{ (inventory_hostname in groups["external"]) | ternary(bgp_as_external, bgp_as_internal) }}
+        when: inventory_hostname in (groups["external"] + groups["edge"]) 

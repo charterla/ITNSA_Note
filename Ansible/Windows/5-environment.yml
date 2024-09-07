@@ -1,0 +1,91 @@
+---
+ - name: Installing the customer environment to the corresponding Windows hosts
+   hosts: windows
+   gather_facts: false
+   vars:
+    - domainName: customers.com
+   vars_files:
+    - /etc/ansible/windows/windows.yml
+
+   tasks:
+    - name: Configure all servers in group "dc" as DNS servers on all WIN hosts
+      win_feature:
+        name: AD-Domain-Services
+        state: present
+        include_sub_features: true
+        include_management_tools: true
+      when: inventory_hostname in groups["dc"]
+      register: win_feature
+
+    - win_reboot:
+      when: inventory_hostname in groups["dc"] and win_feature.reboot_required
+ 
+    - name: Set fact to store all DNS servers' IP address
+      set_fact:
+        dnsServersIPList: "{{ dnsServersIPList is defined | ternary(dnsServersIPList, []) + [ '\"%s\"' | format(hostvars[item].ansible_host) ] }}"
+      loop: "{{ groups['dc'] }}"
+    
+    - name: Set the Dns client server address
+      win_shell: |
+        Set-DnsClientServerAddress -InterfaceIndex $((Get-NetIPAddress -IPAddress {{ ansible_host }}).InterfaceIndex) -ServerAddresses ( {{ dnsServersIPList | join(", ") }} )
+
+    - name: Configure the required domain
+      win_domain:
+        dns_domain_name: "{{ domainName }}"
+        safe_mode_password: P@ssw0rd
+        domain_mode: "Win2012R2"
+        forest_mode: "Win2012R2"
+      when: inventory_hostname in groups["dc"]
+      register: win_domain
+      run_once: yes
+
+    - win_reboot:
+      when: inventory_hostname in groups["dc"] and win_domain.reboot_required
+      run_once: yes
+
+    - name: Add the appadmin as the domain admin
+      win_shell: | 
+        Add-ADGroupMember -Identity "Domain Admins" -Members appadmin 
+      when: inventory_hostname in groups["dc"]
+      register: result
+      until: result.failed == false
+      retries: 20
+      delay: 20
+      run_once: yes
+
+    - name: Configure all servers in group “dc” as domain controller
+      win_domain_controller:
+        dns_domain_name: "{{ domainName }}"
+        domain_admin_user: "{{ domainName }}\\{{ ansible_user }}"
+        domain_admin_password: "{{ ansible_password }}"
+        safe_mode_password: P@ssw0rd
+        state: domain_controller
+      when: inventory_hostname in groups["dc"]
+      register: win_domain_controller
+ 
+    - win_reboot:
+      when: inventory_hostname in groups["dc"] and win_domain_controller.reboot_required
+
+    - name: Join all non-DC Windows hosts to the domain
+      win_domain_membership:
+        dns_domain_name: "{{ domainName }}"
+        hostname: "{{ hostname }}"
+        domain_admin_user: "{{ domainName }}\\{{ ansible_user }}"
+        domain_admin_password: "{{ ansible_password }}"
+        state: domain
+      when: inventory_hostname not in groups["dc"]
+      register: win_domain_membership
+ 
+    - win_reboot:
+      when: inventory_hostname not in groups["dc"] and win_domain_membership.reboot_required
+
+    - name: Configure all servers in group "iis" as IIS web servers on all WIN hosts
+      win_feature:
+        name: Web-Server
+        state: present
+        include_management_tools: true
+      when: inventory_hostname in groups["iis"]
+      register: win_feature
+
+    - win_reboot:
+      when: inventory_hostname in groups["iis"] and win_feature.reboot_required

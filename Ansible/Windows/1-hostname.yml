@@ -1,0 +1,16 @@
+---
+ - name: Configure the hostname of the Windows Hosts
+   hosts: windows
+   gather_facts: false
+   vars_files:
+    - /etc/ansible/windows/windows.yml
+
+   tasks:
+    - name: Apply the hostname to the Windows Hosts
+      win_hostname:
+        name: "{{ hostname }}"
+      register: result
+    
+    - name: Reboot the Hosts to take effect
+      win_reboot:
+      when: result.reboot_required | default(false)

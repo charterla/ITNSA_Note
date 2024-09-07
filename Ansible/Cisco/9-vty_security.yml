@@ -1,0 +1,54 @@
+---
+ - name: Hostname
+   hosts: all
+   gather_facts: false
+   vars_files:
+     - /data/ansible/cisco/cisco
+
+   tasks:
+   - name: Delete old ACL for limit SSH In
+     cisco.ios.ios_acls:
+       config:
+       - afi: ipv4
+         acls:
+           - name: SSH_IN_ACL
+             acl_type: extended
+       state: deleted
+
+   - name: Add ACL for limit SSH In
+     cisco.ios.ios_acls:
+       config:
+       - afi: ipv4
+         acls:
+         - name: SSH_IN_ACL    
+           acl_type: extended
+           aces:
+             - grant: permit
+               protocol: ip
+               source:
+                 address: {{ item | ipaddr( item is ansible.utils.ipv4 | ternary('network', 'address') ) }}
+                 wildcard_bits: {{ item is ansible.utils.ipv4 | ternary((item | ipaddr('hostmask')), '0.0.0.0') }}
+               destination:
+                 any: true
+     with_items: "{{ vty_mgmt_list }}"
+
+   - name: Deny all other traffic in the ACL for limit SSH In
+     cisco.ios.ios_acls:
+       config:
+       - afi: ipv4
+         acls:
+         - name: SSH_IN_ACL    
+           acl_type: extended
+           aces:
+             - grant: deny
+               protocol: ip
+               source:
+                 any: true
+               destination:
+                 any: true
+
+   - name: Apply ACL for limit SSH In
+     cisco.ios.ios_config:
+       lines:
+         - access-class SSH_IN_ACL in
+       parents: line vty 0 15

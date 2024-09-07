@@ -1,0 +1,113 @@
+---
+  - name: Filtering incoming traffic on all LIN hosts
+    hosts: linux
+    gather_facts: false
+    become: true
+    vars:
+      - NFTConfigFilePath: '/etc/nftables.conf'
+      - trustedIPList: [
+          '10.22.0.50', 
+          '10.22.0.251', 
+          '10.22.0.252',
+          '10.22.0.52'
+        ]
+      - subnetInterval: '10.22.0.0/24'
+    vars_files:
+      - /etc/ansible/linux/linux.yml
+
+    tasks: 
+      - name: Update cache of package
+        command: "apt update"
+        ignore_errors: true
+
+      - name: Install the NFTables
+        apt:
+          pkg:
+            - nftables
+          state: present
+
+      - name: Modify the basic rule of nftables
+        copy:
+          content: |
+            #!/usr/sbin/nft -f
+            
+            flush ruleset
+
+            table inet filter {
+            	set trusted {
+            		type ipv4_addr
+            		elements = { {{ trustedIPList | join(', ') }} }
+            	}
+
+            	chain input {
+            		type filter hook input priority 0; policy drop;
+
+            		# Rules of accepting basic traffic
+            		iif lo accept comment "Accept any localhost traffic" 
+            		ct state invalid drop comment "Drop invalid connections"
+            		ct state established,related accept comment "Accept traffic originated from us"
+
+            		# Rules of accepting ICMP and SSH traffic form the trusted hosts
+            		ip saddr @trusted meta l4proto icmp accept comment "Accept ICMP traffic from trusted hosts"
+            		ip saddr @trusted meta l4proto tcp th dport ssh accept comment "Accept SSH traffic from trusted hosts"
+
+            		# Rules of accepting traffic for the services
+
+            		log prefix "Dropped:	" flags all drop
+            	}
+            	chain forward {
+            		type filter hook forward priority 0; policy drop;
+            	}
+            	chain output {
+            		type filter hook output priority 0; policy accept;
+            	}
+            }
+          dest: "{{ NFTConfigFilePath }}"
+          mode: "0755"
+
+      - name: Add nftables rule for accepting DNS server service
+        lineinfile:
+          path: "{{ NFTConfigFilePath }}"
+          line: " 		ip saddr {{ subnetInterval }} meta l4proto { tcp, udp } th dport 53 accept comment \"Accept traffic for DNS server\""
+          insertafter: "# Rules of accepting traffic for the services"
+        when: inventory_hostname in groups['dns']
+
+      - name: Add nftables rule for accepting web server service
+        lineinfile:
+          path: "{{ NFTConfigFilePath }}"
+          line: " 		ip saddr {{ subnetInterval }} meta l4proto tcp th dport { {{ webport }}, 8081 } accept comment \"Accept traffic for web server\""
+          insertafter: "# Rules of accepting traffic for the services"
+        when: inventory_hostname in groups['web']
+
+      - name: Add nftables rule for accepting VRRP and HAProxy server service
+        lineinfile:
+          path: "{{ NFTConfigFilePath }}"
+          line: " 		ip saddr {{ subnetInterval }} meta l4proto {{ item }} accept comment \"Accept traffic for VRRP and HAProxy server\""
+          insertafter: "# Rules of accepting traffic for the services"
+        when: inventory_hostname in groups['ha']
+        with_items: "{{ [ 'vrrp', 'tcp th dport 80' ] }}"
+
+      - name: Add nftables rule for accepting NFS server service
+        lineinfile:
+          path: "{{ NFTConfigFilePath }}"
+          line: " 		ip saddr {{ subnetInterval }} meta l4proto { tcp, udp } th dport 2049 accept comment \"Accept traffic for NFS server\""
+          insertafter: "# Rules of accepting traffic for the services"
+        when: inventory_hostname in groups['nfs']
+
+      - name: Set fact for listing the dns backup server IP
+        set_fact:
+          backupServerIPList: "{{ backupServerIPList is defined | ternary(backupServerIPList, []) + [ hostvars[item].ansible_host ] }}"
+        loop: "{{ groups['backup'] }}"
+        when: inventory_hostname in groups['dns']
+
+      - name: Add nftables rule for accepting backup zone files of dns server
+        lineinfile:
+          path: "{{ NFTConfigFilePath }}"
+          line: " 		ip saddr { {{ backupServerIPList | join(', ') }} } meta l4proto tcp th dport ssh accept comment \"Accept traffic for backup zone files of dns server\""
+          insertafter: "# Rules of accepting traffic for the services"
+        when: inventory_hostname in groups['dns']
+
+      - name: Restart the NFTables service to apply changes
+        service:
+          name: nftables
+          state: restarted

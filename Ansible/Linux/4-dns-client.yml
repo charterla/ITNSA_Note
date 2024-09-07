@@ -1,0 +1,24 @@
+---
+  - name: Configure the DNS client setting of the Linux hosts
+    hosts: linux
+    gather_facts: false
+    become: true
+    vars:
+      domain: applix.com
+      dns_client_conf_path: /etc/resolv.conf
+    vars_files:
+      - /etc/ansible/linux/linux.yml
+
+    tasks:
+      - name: Specify the domain in the resolv.conf file
+        shell: | 
+          echo "[{{ domain }}]" > "{{ dns_client_conf_path }}"
+    
+      - name: List the DNS server in the resolv.conf file
+        shell: | 
+          echo "nameserver {{ hostvars[item].ansible_host }}" >> "{{ dns_client_conf_path }}"
+        loop: "{{ groups['dns'] }}"
+
+      - name: List the Outside DNS server in the resolv.conf file
+        shell: | 
+          echo "nameserver 8.8.8.8" >> "{{ dns_client_conf_path }}"

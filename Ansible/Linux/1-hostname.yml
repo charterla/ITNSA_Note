@@ -1,0 +1,23 @@
+---
+  - name: Set the hostname of all Linux hosts
+    hosts: linux
+    gather_facts: false
+    become: true
+    vars:
+      - domain: 'applix.com'
+    vars_files:
+      - /etc/ansible/linux/linux.yml
+
+    tasks:
+      - name: Set the hostname to the hosts
+        ansible.builtin.hostname:
+          name: "{{ hostname }}"
+
+      - name: Change the hostname resolved in /etc/hosts
+        ansible.builtin.lineinfile:
+          path: /etc/hosts
+          regexp: '^127\.0\.1\.1'
+          line: "127.0.1.1 {{ hostname }}.{{ domain }} {{ hostname }}"
+
+      - name: Reboot the hosts to apply changes
+        reboot:
