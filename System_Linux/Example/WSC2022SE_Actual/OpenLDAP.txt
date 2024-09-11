@@ -1,0 +1,111 @@
+############################################################################################
+01. Add user objects according to Appendix: wsc2022.kr users.
+02. Never use plaintext password as user password.
+03. Make anonymous user prohibited from getting objects information
+############################################################################################
+
+====[intsrv]================================================================================
+apt -y install slapd ldap-utils
+>Skill39
+>Skill39
+dpkg-reconfigure slapd
+><No>
+>wsc2022.kr
+>wsc2022.kr
+>Skill39
+>Skill39
+><No>
+><Yes>
+cd /etc/ldap
+vi users.wsc2022.kr.ldif
+----------------users.wsc2022.kr.ldif----------------
+dn: ou=users,dc=wsc2022,dc=kr
+objectClass: organizationalUnit
+ou: user
+
+dn: ou=groups,dc=wsc2022,dc=kr
+objectClass: organizationalUnit
+ou: groups
+
+dn: uid=james,ou=users,dc=wsc2022,dc=kr
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: james
+sn: james
+loginShell: /bin/bash
+uidNumber: 2000
+gidNumber: 2000
+homeDirectory: /home/james
+mail: james@wsc2022.kr
+givenName: james
+
+dn: cn=james,ou=groups,dc=wsc2022,dc=kr
+objectClass: posixGroup
+cn: james
+gidNumber: 2000
+memberUid: james
+
+dn: uid=donald,ou=users,dc=wsc2022,dc=kr
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: donald
+sn: donald
+loginShell: /bin/bash
+uidNumber: 2001
+gidNumber: 2001
+homeDirectory: /home/donald
+mail: donald@wsc2022.kr
+givenName: donald
+
+dn: cn=donald,ou=groups,dc=wsc2022,dc=kr
+objectClass: posixGroup
+cn: donald
+gidNumber: 2001
+memberUid: Donald
+### :wq
+-----------------------------------------------------
+ldapadd -x -D cn=admin,dc=wsc2022,dc=kr -W -f users.wsc2022.kr.ldif
+>Skill39
+vi changePass.ldif
+----------------changePass.ldif----------------
+dn: uid=james,ou=users,dc=wsc2022,dc=kr
+changetype: modify
+replace: userPassword
+userPassword: 
+### :wq
+-----------------------------------------------
+slappasswd >> changePass.ldif
+>Skill39
+>Skill39
+vi changePass.ldif
+----------------changePass.ldif----------------
+### G
+### dW
+### :4
+### $
+### p
+### G
+### dd
+### :wq
+-----------------------------------------------
+ldapmodify -x -D cn=admin,dc=wsc2022,dc=kr -W -f changePass.ldif
+>Skill39
+vi changePass.ldif
+----------------changePass.ldif----------------
+### :1s/james/donald/g
+### :wq
+-----------------------------------------------
+ldapmodify -x -D cn=admin,dc=wsc2022,dc=kr -W -f changePass.ldif
+>Skill39
+vi disableAnonBind.ldif
+----------------disableAnonBind.ldif----------------
+dn: cn=config
+changetype: modify
+add: olcDisallows
+olcDisallows: bind_anon
+### :wq
+----------------------------------------------------
+ldapmodify -Y EXTERNAL -H ldapi:// -f disableAnonBind.ldif
+====[intsrv]================================================================================
