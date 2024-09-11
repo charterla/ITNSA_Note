@@ -109,3 +109,26 @@ olcDisallows: bind_anon
 ----------------------------------------------------
 ldapmodify -Y EXTERNAL -H ldapi:// -f disableAnonBind.ldif
 ====[intsrv]================================================================================
+
+====[intclnt]===============================================================================
+apt -y install libnss-ldapd libpam-ldapd ldap-utils
+>ldap://intsrv.wsc2022.kr/
+>dc=wsc2022,dc=kr
+>passwd
+ group
+ shadow
+vi /etc/pam.d/common-session
+----------------/etc/pam.d/common-session----------------
+### G
+session optional        pam_mkhomedir.so skel=/etc/skel umask=077
+### :wq
+---------------------------------------------------------
+vi /etc/nslcd.conf
+----------------/etc/nslcd.conf----------------
+### :19
+binddn cn=admin,dc=wsc2022,dc=kr
+bindpw Skill39
+### :wq
+-----------------------------------------------
+systemctl restart nscd nslcd
+====[intclnt]===============================================================================
